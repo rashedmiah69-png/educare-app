@@ -1,1635 +1,574 @@
-<!DOCTYPE html>
-<html lang="bn">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<title>কোচিং ম্যানেজার</title>
-<style>
-  :root{
-    --primary:#1F4E78; --primary-light:#2E6DA4; --accent:#2e7d32; --danger:#b02a2a; --warn:#b06a00;
-    --bg:#f3f5f8; --card:#ffffff; --border:#e0e4ea; --text:#22303f; --muted:#6b7684;
-    --yellow:#fff2cc; --green:#e2efda;
-  }
-  *{box-sizing:border-box;}
-  body{
-    margin:0; background:var(--bg); color:var(--text);
-    font-family:'Noto Sans Bengali','Nirmala UI','Kalpurush',sans-serif;
-    padding-bottom:70px;
-  }
-  header{
-    background:var(--primary); color:#fff; padding:14px 16px; position:sticky; top:0; z-index:20;
-    display:flex; align-items:center; justify-content:space-between;
-  }
-  header h1{font-size:18px; margin:0;}
-  header .sub{font-size:11px; opacity:.85;}
-  nav.tabs{
-    display:flex; overflow-x:auto; background:#173a5c; position:sticky; top:52px; z-index:19;
-    -webkit-overflow-scrolling:touch;
-  }
-  nav.tabs button{
-    flex:0 0 auto; background:none; border:none; color:#cfe0f0; padding:10px 14px;
-    font-size:13px; font-family:inherit; white-space:nowrap; border-bottom:3px solid transparent;
-  }
-  nav.tabs button.active{color:#fff; border-bottom-color:#ffb703; font-weight:bold;}
-  main{padding:12px; max-width:900px; margin:0 auto;}
-  .card{
-    background:var(--card); border:1px solid var(--border); border-radius:10px;
-    padding:14px; margin-bottom:12px; box-shadow:0 1px 2px rgba(0,0,0,.03);
-  }
-  .card h2{font-size:15px; margin:0 0 10px; color:var(--primary);}
-  .card h3.sub-h{font-size:13px; margin:14px 0 8px; color:var(--muted);}
-  .kpi-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
-  .kpi{
-    background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px;
-    text-align:center;
-  }
-  .kpi .val{font-size:19px; font-weight:bold; color:var(--primary);}
-  .kpi.profit .val{color:var(--accent);}
-  .kpi.due .val{color:var(--danger);}
-  .kpi .lbl{font-size:12px; color:var(--muted); margin-top:2px;}
-  label{display:block; font-size:12px; color:var(--muted); margin:8px 0 3px;}
-  input, select, textarea{
-    width:100%; padding:9px 10px; border:1px solid var(--border); border-radius:7px;
-    font-size:14px; font-family:inherit; background:#fff;
-  }
-  input:focus, select:focus, textarea:focus{outline:2px solid var(--primary-light); border-color:var(--primary-light);}
-  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
-  .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;}
-  button.btn{
-    background:var(--primary); color:#fff; border:none; border-radius:7px; padding:10px 14px;
-    font-size:14px; font-family:inherit; margin-top:10px; width:100%; cursor:pointer;
-  }
-  button.btn.secondary{background:#fff; color:var(--primary); border:1px solid var(--primary);}
-  button.btn.danger{background:var(--danger);}
-  button.btn.small{width:auto; padding:6px 10px; font-size:12px; margin:0;}
-  table{width:100%; border-collapse:collapse; font-size:13px;}
-  th, td{padding:7px 6px; border-bottom:1px solid var(--border); text-align:right;}
-  th:first-child, td:first-child, th:nth-child(2), td:nth-child(2){text-align:left;}
-  th{background:#f0f3f7; color:var(--primary); font-size:12px;}
-  .table-wrap{overflow-x:auto;}
-  .pill{display:inline-block; padding:2px 8px; border-radius:20px; font-size:11px;}
-  .pill.ok{background:var(--green); color:var(--accent);}
-  .pill.warn{background:var(--yellow); color:#7a5b00;}
-  .pill.bad{background:#fbe4e4; color:var(--danger);}
-  .search-box{display:flex; gap:8px; margin-bottom:10px;}
-  .search-box input{flex:1;}
-  .empty{color:var(--muted); font-size:13px; text-align:center; padding:14px;}
-  .divider{height:1px; background:var(--border); margin:12px 0;}
-  .profile-grid{display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; font-size:13px;}
-  .profile-grid .k{color:var(--muted);}
-  .profile-grid .v{font-weight:bold;}
-  .receipt{border:2px solid var(--primary); border-radius:10px; padding:18px; background:#fff;}
-  .print-header{display:flex; align-items:center; gap:12px; margin-bottom:10px; border-bottom:2px solid var(--primary); padding-bottom:10px;}
-  .print-header img{height:52px; width:52px; object-fit:contain; border-radius:8px;}
-  .print-header .logo-fallback{
-    height:52px; width:52px; border-radius:8px; background:var(--primary); color:#fff;
-    display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:20px;
-  }
-  .print-header .pinfo{flex:1;}
-  .print-header .pname{font-size:19px; font-weight:bold; color:var(--primary); margin:0;}
-  .print-header .pmeta{font-size:11px; color:var(--muted);}
-  .doc-title{text-align:center; font-size:13px; font-weight:bold; letter-spacing:.5px; text-transform:uppercase; color:var(--muted); margin-bottom:10px;}
-  .receipt table td{border:none; padding:4px 0;}
-  .amount-box{
-    text-align:center; font-size:22px; font-weight:bold; color:var(--accent);
-    border:1px dashed var(--accent); border-radius:8px; padding:8px; margin:10px 0;
-  }
-  .sign-row{display:flex; justify-content:space-between; margin-top:36px; font-size:12px;}
-  .sign-row div{border-top:1px solid #999; padding-top:4px; width:40%; text-align:center;}
-  .tag-row{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;}
-  .tag-row button{
-    border:1px solid var(--border); background:#fff; border-radius:20px; padding:5px 12px;
-    font-size:12px; font-family:inherit;
-  }
-  .tag-row button.active{background:var(--primary); color:#fff; border-color:var(--primary);}
-  .att-grid{display:flex; flex-wrap:wrap; gap:8px;}
-  .att-item{
-    border:1px solid var(--border); border-radius:8px; padding:8px 10px; flex:1 1 45%;
-    display:flex; justify-content:space-between; align-items:center; font-size:13px; gap:6px;
-  }
-  .att-toggle{border:none; border-radius:20px; padding:5px 12px; font-size:12px; font-family:inherit; color:#fff; min-width:80px;}
-  .att-toggle.present{background:var(--accent);}
-  .att-toggle.absent{background:var(--danger);}
-  .att-toggle.leave{background:var(--warn);}
-  .subj-row{display:flex; gap:6px; align-items:center; margin-bottom:6px;}
-  .subj-row input{flex:1;}
-  .subj-row input.full-inp{max-width:70px;}
-  .subj-row input.obt-inp{max-width:70px;}
-  .subj-row button{flex:0 0 auto; background:#fbe4e4; color:var(--danger); border:none; border-radius:6px; padding:6px 9px; font-size:12px;}
-  .toast{
-    position:fixed; bottom:14px; left:50%; transform:translateX(-50%); background:#222; color:#fff;
-    padding:9px 16px; border-radius:20px; font-size:13px; z-index:50; opacity:0; transition:opacity .3s;
-  }
-  .toast.show{opacity:1;}
-  .seg{display:flex; border:1px solid var(--primary); border-radius:8px; overflow:hidden; margin-bottom:10px;}
-  .seg button{flex:1; background:#fff; color:var(--primary); border:none; padding:8px; font-size:13px; font-family:inherit;}
-  .seg button.active{background:var(--primary); color:#fff;}
-  .day-head{background:#eef2f7; font-weight:bold; padding:6px 8px; font-size:12px; border-radius:6px; margin:10px 0 4px;}
-  @media print{
-    header, nav.tabs, .no-print{display:none !important;}
-    main{padding:0;}
-    body{padding:0;}
-  }
-</style>
-</head>
-<body>
-
-<header>
-  <div>
-    <h1>কোচিং ম্যানেজার</h1>
-    <div class="sub" id="headerSub">সব ডেটা এই ফোনেই সংরক্ষিত থাকে</div>
-  </div>
-  <button class="btn small secondary no-print" style="width:auto;margin:0;" onclick="showTab('settings')">⚙ সেটিংস</button>
-</header>
-
-<nav class="tabs no-print" id="tabNav">
-  <button data-tab="dashboard">ড্যাশবোর্ড</button>
-  <button data-tab="students">স্টুডেন্ট</button>
-  <button data-tab="payments">পেমেন্ট</button>
-  <button data-tab="attendance">উপস্থিতি</button>
-  <button data-tab="exams">পরীক্ষা</button>
-  <button data-tab="reports">রিপোর্ট</button>
-  <button data-tab="staff">স্টাফ ও বেতন</button>
-  <button data-tab="expenses">অন্যান্য ব্যয়</button>
-  <button data-tab="search">🔍 সার্চ</button>
-  <button data-tab="summary">সারসংক্ষেপ</button>
-</nav>
-
-<main id="app"></main>
-<div class="toast" id="toast"></div>
-
-<script>
-/* ================== CONSTANTS ================== */
-const CLASSES = ["ষষ্ঠ শ্রেণী","সপ্তম শ্রেণী","অষ্টম শ্রেণী","নবম শ্রেণী","দশম শ্রেণী","একাদশ শ্রেণী","দ্বাদশ শ্রেণী"];
-const CLASS_CODE = {"ষষ্ঠ শ্রেণী":"6","সপ্তম শ্রেণী":"7","অষ্টম শ্রেণী":"8","নবম শ্রেণী":"9","দশম শ্রেণী":"10","একাদশ শ্রেণী":"11","দ্বাদশ শ্রেণী":"12"};
-const MONTHS = ["জানুয়ারি","ফেব্রুয়ারি","মার্চ","এপ্রিল","মে","জুন","জুলাই","আগস্ট","সেপ্টেম্বর","অক্টোবর","নভেম্বর","ডিসেম্বর"];
-const MONTHS_EN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-const SUBJECTS = ["বাংলা","ইংরেজি","গণিত","বিজ্ঞান","ধর্ম/আইসিটি","সমাজ/অন্যান্য"];
-const PAY_METHODS = ["নগদ","বিকাশ","রকেট","ব্যাংক ট্রান্সফার"];
-const EXP_CATS = ["ভাড়া","বিদ্যুৎ বিল","স্টেশনারি","ইন্টারনেট/ফোন","রক্ষণাবেক্ষণ","বিজ্ঞাপন","অন্যান্য"];
-const EXAM_TYPES = ["ক্লাস টেস্ট","অধ্যায় ভিত্তিক টেস্ট","মাসিক টেস্ট","সারপ্রাইজ টেস্ট","মডেল টেস্ট"];
-const EXAM_TYPE_EN = {"ক্লাস টেস্ট":"Class Test","অধ্যায় ভিত্তিক টেস্ট":"Chapter Test","মাসিক টেস্ট":"Monthly Test","সারপ্রাইজ টেস্ট":"Surprise Test","মডেল টেস্ট":"Model Test"};
-const SUBJECT_TEMPLATES = {
-  "ক্লাস টেস্ট": [{name:"",cqFull:10,mcqFull:0},{name:"",cqFull:10,mcqFull:0},{name:"",cqFull:10,mcqFull:0}],
-  "অধ্যায় ভিত্তিক টেস্ট": [{name:"",cqFull:20,mcqFull:5}],
-  "মাসিক টেস্ট": SUBJECTS.map(s=>({name:s, cqFull:70, mcqFull:30})),
-  "সারপ্রাইজ টেস্ট": [{name:"",cqFull:20,mcqFull:0}],
-  "মডেল টেস্ট": SUBJECTS.map(s=>({name:s, cqFull:70, mcqFull:30}))
-};
-const STORE_KEY = "coachingAppData_v2";
-
-/* ================== DATA LAYER ================== */
-function defaultDB(){
-  const classFees = {};
-  CLASSES.forEach(c=>classFees[c]=800);
-  return {
-    meta:{
-      classSeq:{}, receiptSeq:0, staffSeq:0, expenseSeq:0, examSeq:0,
-      instituteName:"Educare Coaching", institutePhone:"01717046168",
-      instituteAddress:"Gobindaganj, Gaibandha", logoDataUrl:null,
-      lastBackupDate:null, firebaseUrl:"", firebasePath:"coaching_data", updatedAt:0
-    },
-    classFees,
-    settings:{
-      payMethods:[...PAY_METHODS],
-      expCats:[...EXP_CATS],
-      examTypes:[...EXAM_TYPES],
-      subjectTemplates: JSON.parse(JSON.stringify(SUBJECT_TEMPLATES)),
-      gradeScale:[{min:80,label:"A+"},{min:70,label:"A"},{min:60,label:"A-"},{min:50,label:"B"},{min:40,label:"C"},{min:0,label:"F"}]
-    },
-    students:[], payments:[], attendance:[], exams:[], staff:[], staffPayments:[], expenses:[]
-  };
-}
-function migrate(data){
-  const base = defaultDB();
-  const d = Object.assign(base, data);
-  d.meta = Object.assign(defaultDB().meta, data.meta||{});
-  d.classFees = Object.assign(defaultDB().classFees, data.classFees||{});
-  const defSettings = defaultDB().settings;
-  d.settings = Object.assign({}, defSettings, data.settings||{});
-  d.settings.subjectTemplates = Object.assign({}, defSettings.subjectTemplates, (data.settings||{}).subjectTemplates||{});
-  (d.exams||[]).forEach(ex=>{
-    if(ex.marks && !ex.subjects){
-      ex.subjects = SUBJECTS.map(s=>({name:s, cqFull:100, mcqFull:0, cqObtained:Number(ex.marks[s]||0), mcqObtained:0}));
-      ex.type = ex.type || "মাসিক টেস্ট";
-      delete ex.marks;
-    }
-    (ex.subjects||[]).forEach(sub=>{
-      if(sub.cqFull===undefined){
-        sub.cqFull = Number(sub.full||0);
-        sub.mcqFull = 0;
-        sub.cqObtained = Number(sub.obtained||0);
-        sub.mcqObtained = 0;
-        delete sub.full; delete sub.obtained;
-      }
-    });
-  });
-  return d;
-}
-let db = load();
-function load(){
-  try{
-    const raw = localStorage.getItem(STORE_KEY);
-    if(raw) return migrate(JSON.parse(raw));
-  }catch(e){}
-  return defaultDB();
-}
-function save(){
-  db.meta.updatedAt = Date.now();
-  localStorage.setItem(STORE_KEY, JSON.stringify(db));
-  pushToCloud();
-}
-/* ================== FIREBASE LIVE SYNC ================== */
-let syncState = "off"; // off, synced, offline, syncing
-function setSyncState(s){
-  syncState = s;
-  const el = document.getElementById('syncIndicator');
-  if(el) el.textContent = syncLabel();
-}
-function syncLabel(){
-  if(!db.meta.firebaseUrl) return "";
-  if(syncState==="synced") return "🟢 লাইভ সিঙ্ক চালু";
-  if(syncState==="syncing") return "🔄 সিঙ্ক হচ্ছে...";
-  if(syncState==="offline") return "⚪ অফলাইন (স্থানীয়ভাবে সংরক্ষিত)";
-  return "";
-}
-function cloudUrl(){
-  if(!db.meta.firebaseUrl) return null;
-  const base = db.meta.firebaseUrl.replace(/\/$/,"");
-  const path = (db.meta.firebasePath||"coaching_data").replace(/^\/|\/$/g,"");
-  return `${base}/${path}.json`;
-}
-async function pushToCloud(){
-  const url = cloudUrl();
-  if(!url) return;
-  setSyncState("syncing");
-  try{
-    await fetch(url, { method:'PUT', body: JSON.stringify(db) });
-    setSyncState("synced");
-  }catch(e){ setSyncState("offline"); }
-}
-async function pullFromCloud(){
-  const url = cloudUrl();
-  if(!url) return null;
-  const res = await fetch(url);
-  if(!res.ok) throw new Error('fetch failed');
-  return await res.json();
-}
-async function checkCloudForUpdates(){
-  if(!db.meta.firebaseUrl) return;
-  const active = document.activeElement;
-  const tag = active && active.tagName;
-  if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA') return;
-  try{
-    const remote = await pullFromCloud();
-    if(remote && remote.meta && Number(remote.meta.updatedAt||0) > Number(db.meta.updatedAt||0)){
-      db = migrate(remote);
-      localStorage.setItem(STORE_KEY, JSON.stringify(db));
-      setSyncState("synced");
-      render();
-      toast("অন্য ডিভাইস থেকে নতুন তথ্য এসেছে");
-    } else {
-      setSyncState("synced");
-    }
-  }catch(e){ setSyncState("offline"); }
-}
-function toast(msg){
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 1800);
-}
-function pad(n,len){ return String(n).padStart(len,"0"); }
-function nextStudentId(cls){
-  db.meta.classSeq[cls] = (db.meta.classSeq[cls]||0)+1;
-  return `${CLASS_CODE[cls]}-${pad(db.meta.classSeq[cls],3)}`;
-}
-function todayStr(){ return new Date().toISOString().slice(0,10); }
-function fmtMoney(n){ return "৳" + Math.round(n||0).toLocaleString('en-IN'); }
-function fmtDate(d){ if(!d) return "-"; const dt=new Date(d); return dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
-function monthNameFromDate(d){ if(!d) return ""; return MONTHS[new Date(d).getMonth()]; }
-function yearFromDate(d){ if(!d) return null; return new Date(d).getFullYear(); }
-
-/* ================== DERIVED CALCS ================== */
-function studentPayments(id){ return db.payments.filter(p=>p.studentId===id); }
-function studentTotalPaid(id){ return studentPayments(id).reduce((s,p)=>s+Number(p.amount||0),0); }
-function studentExpectedTotal(st){
-  if(!st.admissionDate) return 0;
-  const adm = new Date(st.admissionDate); const now = new Date();
-  let months = (now.getFullYear()-adm.getFullYear())*12 + (now.getMonth()-adm.getMonth()) + 1;
-  if(months<0) months=0;
-  return months * Number(st.fee||0);
-}
-function studentDue(st){ return studentExpectedTotal(st) - studentTotalPaid(st.id); }
-function studentAttendancePct(id){
-  const recs = db.attendance.filter(a=>a.studentId===id);
-  if(recs.length===0) return null;
-  const present = recs.filter(a=>a.status==="উপস্থিত").length;
-  return Math.round((present/recs.length)*100);
-}
-function studentLastPayment(id){
-  const p = studentPayments(id).sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
-  return p ? p.date : null;
-}
-function getStudent(id){ return db.students.find(s=>s.id===id); }
-function activeStudents(cls){
-  let list = db.students.filter(s=>s.status!=="নিষ্ক্রিয়");
-  if(cls && cls!=="সব") list = list.filter(s=>s.class===cls);
-  return list;
-}
-function gradeFromPct(pct){
-  const scale = [...db.settings.gradeScale].sort((a,b)=>b.min-a.min);
-  for(const g of scale){ if(pct>=g.min) return g.label; }
-  return scale.length ? scale[scale.length-1].label : "-";
-}
-function subjectTemplateFor(type){
-  const t = db.settings.subjectTemplates[type];
-  return t ? JSON.parse(JSON.stringify(t)) : [{name:"",cqFull:100,mcqFull:0}];
-}
-function subCqObtained(sub){ return Number(sub.cqObtained||0); }
-function subMcqObtained(sub){ return Number(sub.mcqObtained||0); }
-function subTotal(sub){ return subCqObtained(sub)+subMcqObtained(sub); }
-function subFull(sub){ return Number(sub.cqFull||0)+Number(sub.mcqFull||0); }
-function examTotal(ex){ return (ex.subjects||[]).reduce((s,sub)=>s+subTotal(sub),0); }
-function examFull(ex){ return (ex.subjects||[]).reduce((s,sub)=>s+subFull(sub),0); }
-function examPct(ex){ const f=examFull(ex); return f>0 ? Math.round((examTotal(ex)/f)*1000)/10 : 0; }
-
-function paymentsFiltered(cls, year){
-  let list = db.payments;
-  if(cls && cls!=="সব") list = list.filter(p=>{ const s=getStudent(p.studentId); return s && s.class===cls; });
-  if(year) list = list.filter(p=>yearFromDate(p.date)===year);
-  return list;
-}
-function monthlyIncome(month, year, cls){
-  return paymentsFiltered(cls, year).filter(p=>monthNameFromDate(p.date)===month)
-    .reduce((s,p)=>s+Number(p.amount||0),0);
-}
-function monthlySalaryExpense(month, year){
-  return db.staffPayments.filter(p=>p.month===month && (!year || yearFromDate(p.date)===year))
-    .reduce((s,p)=>s+Number(p.amount||0),0);
-}
-function monthlyOtherExpense(month, year){
-  return db.expenses.filter(e=>e.month===month && (!year || yearFromDate(e.date)===year))
-    .reduce((s,e)=>s+Number(e.amount||0),0);
-}
-function getYearsList(){
-  const years = new Set([new Date().getFullYear()]);
-  db.payments.forEach(p=>years.add(yearFromDate(p.date)));
-  db.staffPayments.forEach(p=>years.add(yearFromDate(p.date)));
-  db.expenses.forEach(e=>years.add(yearFromDate(e.date)));
-  return Array.from(years).filter(Boolean).sort((a,b)=>b-a);
-}
-
-/* ================== PRINT HEADER ================== */
-function printHeaderHtml(docTitle){
-  const m = db.meta;
-  const logo = m.logoDataUrl
-    ? `<img src="${m.logoDataUrl}" alt="logo">`
-    : `<div class="logo-fallback">${(m.instituteName||"EC").slice(0,2).toUpperCase()}</div>`;
-  return `
-    <div class="print-header">
-      ${logo}
-      <div class="pinfo">
-        <div class="pname">${m.instituteName||""}</div>
-        <div class="pmeta">${m.instituteAddress||""}${m.instituteAddress&&m.institutePhone?' · ':''}${m.institutePhone?('Phone: '+m.institutePhone):''}</div>
-      </div>
-    </div>
-    <div class="doc-title">${docTitle}</div>
-  `;
-}
-
-/* ================== NAVIGATION ================== */
-let currentTab = 'dashboard';
-document.getElementById('tabNav').addEventListener('click', e=>{
-  const b = e.target.closest('button[data-tab]');
-  if(b) showTab(b.dataset.tab);
-});
-function showTab(tab){
-  currentTab = tab;
-  document.querySelectorAll('#tabNav button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
-  render();
-  window.scrollTo(0,0);
-}
-function render(){
-  const app = document.getElementById('app');
-  const fns = {
-    dashboard: renderDashboard, students: renderStudents, payments: renderPayments,
-    attendance: renderAttendance, exams: renderExams, reports: renderReports, staff: renderStaff,
-    expenses: renderExpenses, summary: renderSummary, settings: renderSettings, search: renderSearch,
-    studentProfile: renderStudentProfile, receipt: renderReceipt, reportCard: renderReportCard,
-    classResult: renderClassResult
-  };
-  app.innerHTML = "";
-  try{
-    (fns[currentTab]||renderDashboard)();
-  }catch(err){
-    console.error('Render error on tab', currentTab, err);
-    app.innerHTML = `<div class="card"><div class="empty">এই অংশ লোড করতে সমস্যা হয়েছে। উপরের অন্য একটি ট্যাবে চেপে আবার চেষ্টা করুন। আপনার ডেটা নিরাপদ আছে।</div></div>`;
-  }
-}
-
-/* ================== DASHBOARD ================== */
-function renderDashboard(){
-  const app = document.getElementById('app');
-  const now = new Date();
-  const curMonth = MONTHS[now.getMonth()];
-  const curYear = now.getFullYear();
-  const income = monthlyIncome(curMonth, curYear);
-  const salExp = monthlySalaryExpense(curMonth, curYear);
-  const otherExp = monthlyOtherExpense(curMonth, curYear);
-  const profit = income - salExp - otherExp;
-  const totalDue = activeStudents().reduce((s,st)=>s+Math.max(0,studentDue(st)),0);
-  const today = todayStr();
-  const todayAtt = db.attendance.filter(a=>a.date===today);
-  const todayPresent = todayAtt.filter(a=>a.status==="উপস্থিত").length;
-
-  app.innerHTML = `
-    <div class="kpi-grid">
-      <div class="kpi"><div class="val">${activeStudents().length}</div><div class="lbl">সক্রিয় স্টুডেন্ট</div></div>
-      <div class="kpi"><div class="val">${todayAtt.length?`${todayPresent}/${todayAtt.length}`:'-'}</div><div class="lbl">আজকের উপস্থিতি</div></div>
-      <div class="kpi"><div class="val">${fmtMoney(income)}</div><div class="lbl">${curMonth} মাসের আয়</div></div>
-      <div class="kpi"><div class="val">${fmtMoney(salExp+otherExp)}</div><div class="lbl">${curMonth} মাসের ব্যয়</div></div>
-      <div class="kpi profit"><div class="val">${fmtMoney(profit)}</div><div class="lbl">${curMonth} মাসের মুনাফা</div></div>
-      <div class="kpi due"><div class="val">${fmtMoney(totalDue)}</div><div class="lbl">মোট বকেয়া</div></div>
-    </div>
-    <div class="card">
-      <h2>মাস অনুযায়ী আয়-ব্যয়-মুনাফা (${curYear})</h2>
-      <div class="table-wrap"><table>
-        <tr><th>মাস</th><th>আয়</th><th>ব্যয়</th><th>মুনাফা</th></tr>
-        ${MONTHS.map(m=>{
-          const inc=monthlyIncome(m,curYear), exp=monthlySalaryExpense(m,curYear)+monthlyOtherExpense(m,curYear), pr=inc-exp;
-          return `<tr><td>${m}</td><td>${fmtMoney(inc)}</td><td>${fmtMoney(exp)}</td><td style="color:${pr>=0?'var(--accent)':'var(--danger)'}">${fmtMoney(pr)}</td></tr>`;
-        }).join("")}
-      </table></div>
-    </div>
-    <div class="card">
-      <h2>সবচেয়ে বেশি বকেয়া (টপ ৫)</h2>
-      ${topDueList()}
+<span class="pill ${examPct(e)>=40?'ok':'bad'}">${gradeFromPct(examPct(e))}</span></td>
+        <td><button class="btn small secondary" onclick="openReportCard('${e.id}')">কার্ড</button></td>
+      </tr>`).join("")}
+      </table></div>`}
     </div>
   `;
 }
-function topDueList(){
-  const list = activeStudents().map(s=>({s, due: studentDue(s)}))
-    .filter(x=>x.due>0).sort((a,b)=>b.due-a.due).slice(0,5);
-  if(list.length===0) return `<div class="empty">কোনো বকেয়া নেই 🎉</div>`;
-  return `<div class="table-wrap"><table><tr><th>নাম</th><th>শ্রেণী</th><th>বকেয়া</th></tr>
-    ${list.map(x=>`<tr><td>${x.s.name}</td><td>${x.s.class}</td><td style="color:var(--danger)">${fmtMoney(x.due)}</td></tr>`).join("")}
-  </table></div>`;
-}
 
-/* ================== STUDENTS ================== */
-let studentSearch = "";
-let studentClassFilter = "সব";
-let editingStudentId = null;
-function renderStudents(){
+/* ================== PAYMENTS ================== */
+let paymentCls = "সব";
+let paymentYear = new Date().getFullYear();
+let activeReceiptId = null;
+
+function renderPayments(){
   const app = document.getElementById('app');
   app.innerHTML = `
     <div class="card">
-      <h2>${editingStudentId ? "স্টুডেন্ট তথ্য পরিবর্তন" : "নতুন স্টুডেন্ট যোগ করুন"}</h2>
-      <form id="studentForm"></form>
+      <h2>ফি গ্রহণ করুন</h2>
+      <form id="payForm">
+        <div class="row2">
+          <div><label>শ্রেণী</label><select id="p_class"><option value="">বাছাই করুন...</option>${CLASSES.map(c=>`<option>${c}</option>`).join("")}</select></div>
+          <div><label>স্টুডেন্ট</label><select id="p_student" required><option value="">আগে শ্রেণী বেছে নিন</option></select></div>
+        </div>
+        <div id="p_student_info" class="empty" style="text-align:left;padding:4px 0"></div>
+        <div class="row2">
+          <div><label>কোন মাসের ফি</label><select id="p_month">${MONTHS.map(m=>`<option ${m===MONTHS[new Date().getMonth()]?'selected':''}>${m}</option>`).join("")}</select></div>
+          <div><label>পরিমাণ (৳)</label><input id="p_amount" type="number" required></div>
+        </div>
+        <div class="row2">
+          <div><label>পেমেন্ট মাধ্যম</label><select id="p_method">${db.settings.payMethods.map(m=>`<option>${m}</option>`).join("")}</select></div>
+          <div><label>তারিখ</label><input id="p_date" type="date" value="${todayStr()}"></div>
+        </div>
+        <label>নোট / রেফারেন্স (ঐচ্ছিক)</label><input id="p_note" placeholder="যেমন: বিকাশ ট্রানজাকশন আইডি">
+        <button type="submit" class="btn">ফি জমা নিন ও রিসিট তৈরি করুন</button>
+      </form>
     </div>
+
     <div class="card">
-      <h2>স্টুডেন্ট তালিকা (${db.students.length})</h2>
-      <div class="tag-row" id="stuClassTags"></div>
-      <div class="search-box">
-        <input id="stuSearch" placeholder="আইডি বা নাম দিয়ে খুঁজুন..." value="${studentSearch}">
+      <h2>পেমেন্ট হিস্ট্রি</h2>
+      <div class="row2">
+        <div>
+          <label>শ্রেণী ফিল্টার</label>
+          <select id="p_filter_cls"><option>সব</option>${CLASSES.map(c=>`<option ${paymentCls===c?'selected':''}>${c}</option>`).join("")}</select>
+        </div>
+        <div>
+          <label>বছর ফিল্টার</label>
+          <select id="p_filter_yr">${getYearsList().map(y=>`<option ${paymentYear===y?'selected':''}>${y}</option>`).join("")}</select>
+        </div>
       </div>
-      <div class="table-wrap" id="stuTableWrap"></div>
+      <div class="table-wrap" id="payTableWrap"></div>
     </div>
   `;
-  buildStudentForm();
-  const tagWrap = document.getElementById('stuClassTags');
-  tagWrap.innerHTML = ["সব",...CLASSES].map(c=>`<button data-c="${c}" class="${studentClassFilter===c?'active':''}">${c}</button>`).join("");
-  tagWrap.addEventListener('click', e=>{
-    const b = e.target.closest('button'); if(!b) return;
-    studentClassFilter = b.dataset.c; renderStudents();
+
+  const pClassSel = document.getElementById('p_class');
+  const pStuSel = document.getElementById('p_student');
+  const pInfo = document.getElementById('p_student_info');
+
+  pClassSel.addEventListener('change', e=>{
+    const cls = e.target.value;
+    const stus = activeStudents(cls);
+    pStuSel.innerHTML = stus.length ? stus.map(s=>`<option value="${s.id}">${s.name} (${s.id})</option>`).join("") : `<option value="">কোনো সক্রিয় স্টুডেন্ট নেই</option>`;
+    updatePayStuInfo();
   });
-  document.getElementById('stuSearch').addEventListener('input', e=>{
-    studentSearch = e.target.value; renderStudentTable();
-  });
-  renderStudentTable();
-}
-function buildStudentForm(){
-  const editing = editingStudentId ? getStudent(editingStudentId) : null;
-  const f = document.getElementById('studentForm');
-  f.innerHTML = `
-    <label>নাম</label><input id="f_name" value="${editing?editing.name:''}" required>
-    <div class="row2">
-      <div><label>শ্রেণী</label><select id="f_class">${CLASSES.map(c=>`<option ${editing&&editing.class===c?'selected':''}>${c}</option>`).join("")}</select></div>
-      <div><label>মাসিক ফি (৳)</label><input id="f_fee" type="number" value="${editing?editing.fee:(db.classFees[CLASSES[0]]||800)}"></div>
-    </div>
-    <label>অভিভাবকের নাম</label><input id="f_guardian" value="${editing?editing.guardian||'':''}">
-    <div class="row2">
-      <div><label>মোবাইল নম্বর</label><input id="f_phone" value="${editing?editing.phone||'':''}"></div>
-      <div><label>হোয়াটসঅ্যাপ নম্বর</label><input id="f_whatsapp" value="${editing?editing.whatsapp||'':''}"></div>
-    </div>
-    <label>ইমেইল (ঐচ্ছিক)</label><input id="f_email" value="${editing?editing.email||'':''}">
-    <div class="row2">
-      <div><label>ভর্তির তারিখ</label><input id="f_admission" type="date" value="${editing?editing.admissionDate:todayStr()}"></div>
-      <div><label>অবস্থা</label><select id="f_status">
-        <option ${editing&&editing.status==='সক্রিয়'?'selected':''}>সক্রিয়</option>
-        <option ${editing&&editing.status==='নিষ্ক্রিয়'?'selected':''}>নিষ্ক্রিয়</option>
-      </select></div>
-    </div>
-    <label>ছাড়ার তারিখ (শুধু নিষ্ক্রিয় করলে পূরণ করুন)</label><input id="f_leftdate" type="date" value="${editing&&editing.leftDate?editing.leftDate:''}">
-    ${editing?`<label>স্টুডেন্ট আইডি</label><input value="${editing.id}" disabled>`:`<div class="empty" style="text-align:left;padding:4px 0">শ্রেণী অনুযায়ী আইডি স্বয়ংক্রিয়ভাবে তৈরি হবে (যেমন ${CLASS_CODE[CLASSES[0]]}-001)</div>`}
-    <button type="submit" class="btn">${editing?'তথ্য সংরক্ষণ করুন':'স্টুডেন্ট যোগ করুন'}</button>
-    ${editing?'<button type="button" class="btn secondary" id="cancelEdit">বাতিল</button>':''}
-  `;
-  document.getElementById('f_class').addEventListener('change', e=>{
-    if(!editing) document.getElementById('f_fee').value = db.classFees[e.target.value]||800;
-  });
-  document.getElementById('f_status').addEventListener('change', e=>{
-    const ld = document.getElementById('f_leftdate');
-    if(e.target.value==='নিষ্ক্রিয়' && !ld.value) ld.value = todayStr();
-  });
-  f.addEventListener('submit', e=>{
+
+  pStuSel.addEventListener('change', updatePayStuInfo);
+
+  function updatePayStuInfo(){
+    const s = getStudent(pStuSel.value);
+    if(!s){ pInfo.innerHTML = ''; return; }
+    const due = studentDue(s);
+    document.getElementById('p_amount').value = s.fee;
+    pInfo.innerHTML = `মাসিক ফি: <b>${fmtMoney(s.fee)}</b> | বকেয়া: <b style="color:${due>0?'var(--danger)':'var(--accent)'}">${fmtMoney(Math.max(0,due))}</b>`;
+  }
+
+  document.getElementById('payForm').addEventListener('submit', e=>{
     e.preventDefault();
-    const data = {
-      name: document.getElementById('f_name').value.trim(),
-      class: document.getElementById('f_class').value,
-      fee: Number(document.getElementById('f_fee').value||0),
-      guardian: document.getElementById('f_guardian').value.trim(),
-      phone: document.getElementById('f_phone').value.trim(),
-      whatsapp: document.getElementById('f_whatsapp').value.trim(),
-      email: document.getElementById('f_email').value.trim(),
-      admissionDate: document.getElementById('f_admission').value,
-      status: document.getElementById('f_status').value,
-      leftDate: document.getElementById('f_leftdate').value || null
+    const stId = pStuSel.value;
+    if(!stId){ toast("স্টুডেন্ট নির্বাচন করুন"); return; }
+    
+    db.meta.receiptSeq = (db.meta.receiptSeq||0)+1;
+    const recId = `REC-${pad(db.meta.receiptSeq,4)}`;
+    
+    const payData = {
+      id: recId,
+      studentId: stId,
+      forMonth: document.getElementById('p_month').value,
+      amount: Number(document.getElementById('p_amount').value||0),
+      method: document.getElementById('p_method').value,
+      date: document.getElementById('p_date').value,
+      note: document.getElementById('p_note').value.trim()
     };
-    if(!data.name){ toast("নাম আবশ্যক"); return; }
-    if(editing){
-      const oldClass = editing.class;
-      Object.assign(editing, data);
-      toast("তথ্য হালনাগাদ হয়েছে");
-      editingStudentId = null;
-    } else {
-      data.id = nextStudentId(data.class);
-      db.students.push(data);
-      toast("নতুন স্টুডেন্ট যোগ হয়েছে: " + data.id);
-    }
-    save(); renderStudents();
+
+    db.payments.push(payData);
+    save();
+    toast("পেমেন্ট সফলভাবে সংরক্ষণ করা হয়েছে");
+    openReceipt(recId);
   });
-  if(editing){
-    document.getElementById('cancelEdit').addEventListener('click', ()=>{ editingStudentId=null; renderStudents(); });
-  }
+
+  document.getElementById('p_filter_cls').addEventListener('change', e=>{ paymentCls = e.target.value; renderPayTable(); });
+  document.getElementById('p_filter_yr').addEventListener('change', e=>{ paymentYear = Number(e.target.value); renderPayTable(); });
+
+  renderPayTable();
 }
-function renderStudentTable(){
-  const wrap = document.getElementById('stuTableWrap');
-  const q = studentSearch.trim().toLowerCase();
-  let list = db.students;
-  if(studentClassFilter!=="সব") list = list.filter(s=>s.class===studentClassFilter);
-  if(q) list = list.filter(s=>s.id.toLowerCase().includes(q)||s.name.toLowerCase().includes(q));
-  if(list.length===0){ wrap.innerHTML = `<div class="empty">কোনো স্টুডেন্ট পাওয়া যায়নি</div>`; return; }
-  wrap.innerHTML = `<table><tr><th>আইডি</th><th>নাম</th><th>শ্রেণী</th><th>বকেয়া</th><th></th></tr>
-    ${list.map(s=>{
-      const due = studentDue(s);
+
+function renderPayTable(){
+  const wrap = document.getElementById('payTableWrap');
+  const list = paymentsFiltered(paymentCls, paymentYear).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  
+  if(list.length===0){ wrap.innerHTML = `<div class="empty">কোনো পেমেন্টের রেকর্ড পাওয়া যায়নি</div>`; return; }
+  
+  wrap.innerHTML = `<table>
+    <tr><th>রিসিট নং</th><th>স্টুডেন্ট</th><th>মাস</th><th>পরিমাণ</th><th>তারিখ</th><th></th></tr>
+    ${list.map(p=>{
+      const s = getStudent(p.studentId);
       return `<tr>
-        <td>${s.id}</td><td>${s.name}</td><td>${s.class}</td>
-        <td>${due>0?`<span class="pill bad">${fmtMoney(due)}</span>`:`<span class="pill ok">নেই</span>`}</td>
-        <td><button class="btn small secondary" onclick="openProfile('${s.id}')">দেখুন</button></td>
+        <td>${p.id}</td>
+        <td>${s ? s.name : 'অজানা'} <br><small style="color:var(--muted)">${s?s.class:''}</small></td>
+        <td>${p.forMonth}</td>
+        <td style="color:var(--accent);font-weight:bold">${fmtMoney(p.amount)}</td>
+        <td>${fmtDate(p.date)}</td>
+        <td><button class="btn small secondary" onclick="openReceipt('${p.id}')">রিসিট</button></td>
       </tr>`;
     }).join("")}
   </table>`;
 }
-let profileStudentId = null;
-let profileBackTab = 'students';
-function openProfile(id, backTab){ profileStudentId = id; profileBackTab = backTab||'students'; currentTab='studentProfile'; render(); window.scrollTo(0,0); }
-function renderStudentProfile(){
-  const app = document.getElementById('app');
-  const s = getStudent(profileStudentId);
-  if(!s){ app.innerHTML = `<div class="empty">স্টুডেন্ট পাওয়া যায়নি</div>`; return; }
-  const paid = studentTotalPaid(s.id);
-  const due = studentDue(s);
-  const att = studentAttendancePct(s.id);
-  const lastPay = studentLastPayment(s.id);
-  const pays = studentPayments(s.id).sort((a,b)=>new Date(b.date)-new Date(a.date));
-  const exs = db.exams.filter(e=>e.studentId===s.id).sort((a,b)=>new Date(b.date)-new Date(a.date));
-  const attRecs = db.attendance.filter(a=>a.studentId===s.id).sort((a,b)=>new Date(b.date)-new Date(a.date));
-  const examTypeCounts = {};
-  exs.forEach(e=>{ const t=e.type||'অজানা'; examTypeCounts[t]=(examTypeCounts[t]||0)+1; });
-  app.innerHTML = `
-    <button class="btn secondary no-print" onclick="showTab('${profileBackTab}')">← ফিরে যান</button>
-    <div class="card">
-      <h2>${s.name} <span style="color:var(--muted);font-size:12px;">(${s.id})</span></h2>
-      <div class="profile-grid">
-        <div class="k">শ্রেণী</div><div class="v">${s.class}</div>
-        <div class="k">অভিভাবক</div><div class="v">${s.guardian||'-'}</div>
-        <div class="k">মোবাইল</div><div class="v">${s.phone||'-'}</div>
-        <div class="k">হোয়াটসঅ্যাপ</div><div class="v">${s.whatsapp||'-'}</div>
-        <div class="k">ভর্তির তারিখ</div><div class="v">${fmtDate(s.admissionDate)}</div>
-        <div class="k">মাসিক ফি</div><div class="v">${fmtMoney(s.fee)}</div>
-        <div class="k">মোট প্রদত্ত</div><div class="v" style="color:var(--accent)">${fmtMoney(paid)}</div>
-        <div class="k">বর্তমান বকেয়া</div><div class="v" style="color:${due>0?'var(--danger)':'var(--accent)'}">${fmtMoney(Math.max(0,due))}</div>
-        <div class="k">উপস্থিতির হার</div><div class="v">${att===null?'তথ্য নেই':att+'%'}</div>
-        <div class="k">সর্বশেষ পেমেন্ট</div><div class="v">${lastPay?fmtDate(lastPay):'-'}</div>
-      </div>
-      <button class="btn secondary no-print" onclick="editingStudentId='${s.id}'; showTab('students')">✎ তথ্য পরিবর্তন</button>
-    </div>
-    <div class="card">
-      <h2>পেমেন্ট হিস্ট্রি (${pays.length})</h2>
-      ${pays.length===0?'<div class="empty">কোনো পেমেন্ট নেই</div>':`
-      <div class="table-wrap"><table><tr><th>তারিখ</th><th>কোন মাসের ফি</th><th>পরিমাণ</th><th></th></tr>
-      ${pays.map(p=>`<tr><td>${fmtDate(p.date)}</td><td>${p.forMonth}</td><td>${fmtMoney(p.amount)}</td>
-        <td><button class="btn small secondary" onclick="openReceipt('${p.id}')">রিসিট</button></td></tr>`).join("")}
-      </table></div>`}
-    </div>
-    <div class="card">
-      <h2>উপস্থিতি হিস্ট্রি (${attRecs.length})</h2>
-      ${attRecs.length===0?'<div class="empty">কোনো তথ্য নেই</div>':`
-      <div class="table-wrap"><table><tr><th>তারিখ</th><th>অবস্থা</th></tr>
-      ${attRecs.slice(0,25).map(a=>`<tr><td>${fmtDate(a.date)}</td><td><span class="pill ${a.status==='উপস্থিত'?'ok':(a.status==='অনুপস্থিত'?'bad':'warn')}">${a.status}</span></td></tr>`).join("")}
-      </table></div>
-      ${attRecs.length>25?`<p style="font-size:12px;color:var(--muted);text-align:center">সর্বশেষ ২৫টি দেখানো হয়েছে, মোট ${attRecs.length}টি রেকর্ড আছে</p>`:''}`}
-    </div>
-    <div class="card">
-      <h2>পরীক্ষার সারাংশ</h2>
-      ${Object.keys(examTypeCounts).length===0?'<div class="empty">কোনো পরীক্ষা দেয়নি</div>':`
-      <div class="table-wrap"><table><tr><th>ধরন</th><th>কতবার দিয়েছে</th></tr>
-      ${Object.keys(examTypeCounts).map(t=>`<tr><td>${t}</td><td style="text-align:right">${examTypeCounts[t]}</td></tr>`).join("")}
-      <tr style="font-weight:bold"><td>সর্বমোট</td><td style="text-align:right">${exs.length}</td></tr>
-      </table></div>`}
-    </div>
-    <div class="card">
-      <h2>পরীক্ষার ফলাফল (${exs.length})</h2>
-      ${exs.length===0?'<div class="empty">কোনো ফলাফল নেই</div>':`
-      <div class="table-wrap"><table><tr><th>ধরন</th><th>তারিখ</th><th>প্রাপ্ত</th><th>গ্রেড</th><th></th></tr>
-      ${exs.map(e=>`<tr><td>${e.type||'-'}</td><td>${fmtDate(e.date)}</td><td>${examTotal(e)}/${examFull(e)}</td><td>${gradeFromPct(examPct(e))}</td>
-        <td><button class="btn small secondary" onclick="openReportCard('${e.id}')">দেখুন</button></td></tr>`).join("")}
-      </table></div>`}
-    </div>
-  `;
-}
 
-/* ================== GLOBAL SEARCH ================== */
-let globalSearchQuery = "";
-function renderSearch(){
-  const app = document.getElementById('app');
-  app.innerHTML = `
-    <div class="card">
-      <h2>স্টুডেন্ট সার্চ</h2>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 8px">আইডি বা নাম লিখুন — পেমেন্ট, উপস্থিতি ও রেজাল্ট হিস্ট্রিসহ সম্পূর্ণ প্রোফাইল দেখতে ট্যাপ করুন</p>
-      <input id="globalSearchBox" placeholder="যেমন: 6-001 অথবা করিম" value="${globalSearchQuery}" autofocus>
-      <div id="globalSearchResults" style="margin-top:10px"></div>
-    </div>
-  `;
-  const box = document.getElementById('globalSearchBox');
-  box.addEventListener('input', e=>{ globalSearchQuery=e.target.value; renderGlobalSearchResults(); });
-  renderGlobalSearchResults();
-  box.focus();
-}
-function renderGlobalSearchResults(){
-  const wrap = document.getElementById('globalSearchResults');
-  const q = globalSearchQuery.trim().toLowerCase();
-  if(!q){ wrap.innerHTML = `<div class="empty">আইডি বা নাম লিখে সার্চ শুরু করুন</div>`; return; }
-  const list = db.students.filter(s=>s.id.toLowerCase().includes(q)||s.name.toLowerCase().includes(q));
-  if(list.length===0){ wrap.innerHTML = `<div class="empty">কোনো স্টুডেন্ট পাওয়া যায়নি</div>`; return; }
-  wrap.innerHTML = `<div class="table-wrap"><table><tr><th>আইডি</th><th>নাম</th><th>শ্রেণী</th><th></th></tr>
-    ${list.map(s=>`<tr><td>${s.id}</td><td>${s.name}</td><td>${s.class}</td>
-      <td><button class="btn small secondary" onclick="openProfile('${s.id}','search')">দেখুন</button></td></tr>`).join("")}
-  </table></div>`;
-}
+function openReceipt(recId){ activeReceiptId = recId; currentTab='receipt'; render(); window.scrollTo(0,0); }
 
-/* ================== PAYMENTS ================== */
-let paymentClassFilter = "সব";
-let paymentViewMode = "মাসিক";
-let paymentFormClass = "সব";
-function renderPayments(){
-  const app = document.getElementById('app');
-  const years = getYearsList();
-  app.innerHTML = `
-    <div class="card">
-      <h2>নতুন ফি পেমেন্ট এন্ট্রি</h2>
-      <form id="payForm">
-        <label>শ্রেণী (তালিকা ছোট করতে)</label>
-        <select id="p_classfilter">
-          <option value="সব">-- সব শ্রেণী --</option>
-          ${CLASSES.map(c=>`<option ${paymentFormClass===c?'selected':''}>${c}</option>`).join("")}
-        </select>
-        <label>স্টুডেন্ট</label>
-        <select id="p_student" required></select>
-        <div class="row2">
-          <div><label>তারিখ</label><input id="p_date" type="date" value="${todayStr()}"></div>
-          <div><label>কোন মাসের ফি</label><select id="p_month">${MONTHS.map(m=>`<option ${m===monthNameFromDate(todayStr())?'selected':''}>${m}</option>`).join("")}</select></div>
-        </div>
-        <div class="row2">
-          <div><label>পরিমাণ (৳)</label><input id="p_amount" type="number" required></div>
-          <div><label>মাধ্যম</label><select id="p_method">${db.settings.payMethods.map(m=>`<option>${m}</option>`).join("")}</select></div>
-        </div>
-        <label>গ্রহণকারীর নাম</label><input id="p_by" placeholder="যেমন: আপনার নাম">
-        <label>মন্তব্য (ঐচ্ছিক)</label><input id="p_note">
-        <button type="submit" class="btn">পেমেন্ট রেকর্ড করুন ও রিসিট তৈরি করুন</button>
-      </form>
-    </div>
-    <div class="card">
-      <h2>পেমেন্ট হিস্ট্রি</h2>
-      <div class="tag-row" id="payClassTags"></div>
-      <div class="seg" id="payViewSeg">
-        <button data-v="মাসিক" class="${paymentViewMode==='মাসিক'?'active':''}">মাসিক ভিউ</button>
-        <button data-v="দৈনিক" class="${paymentViewMode==='দৈনিক'?'active':''}">দৈনিক ভিউ</button>
-      </div>
-      <div class="table-wrap" id="payHistWrap"></div>
-    </div>
-  `;
-  // student dropdown population
-  const classFilterSel = document.getElementById('p_classfilter');
-  function populateStudentDrop(){
-    const cls = classFilterSel.value;
-    const list = cls==="সব" ? db.students : db.students.filter(s=>s.class===cls);
-    document.getElementById('p_student').innerHTML = `<option value="">-- নির্বাচন করুন --</option>` +
-      list.map(s=>`<option value="${s.id}">${s.id} — ${s.name}</option>`).join("");
-  }
-  classFilterSel.addEventListener('change', ()=>{ paymentFormClass = classFilterSel.value; populateStudentDrop(); });
-  populateStudentDrop();
-
-  document.getElementById('payForm').addEventListener('submit', e=>{
-    e.preventDefault();
-    const sid = document.getElementById('p_student').value;
-    if(!sid){ toast("স্টুডেন্ট নির্বাচন করুন"); return; }
-    db.meta.receiptSeq++;
-    const p = {
-      id: "PMT-"+pad(db.meta.receiptSeq,5),
-      receiptNo: "RCPT-"+pad(db.meta.receiptSeq,5),
-      studentId: sid,
-      date: document.getElementById('p_date').value || todayStr(),
-      forMonth: document.getElementById('p_month').value,
-      amount: Number(document.getElementById('p_amount').value||0),
-      method: document.getElementById('p_method').value,
-      receivedBy: document.getElementById('p_by').value.trim(),
-      notes: document.getElementById('p_note').value.trim()
-    };
-    db.payments.push(p);
-    save();
-    toast("পেমেন্ট রেকর্ড হয়েছে");
-    openReceipt(p.id);
-  });
-
-  const payTagWrap = document.getElementById('payClassTags');
-  payTagWrap.innerHTML = ["সব",...CLASSES].map(c=>`<button data-c="${c}" class="${paymentClassFilter===c?'active':''}">${c}</button>`).join("");
-  payTagWrap.addEventListener('click', e=>{
-    const b=e.target.closest('button'); if(!b) return;
-    paymentClassFilter = b.dataset.c; renderPayments();
-  });
-  document.getElementById('payViewSeg').addEventListener('click', e=>{
-    const b=e.target.closest('button'); if(!b) return;
-    paymentViewMode = b.dataset.v; renderPayHistory();
-  });
-  renderPayHistory();
-}
-function renderPayHistory(){
-  const wrap = document.getElementById('payHistWrap');
-  const list = paymentsFiltered(paymentClassFilter).sort((a,b)=>new Date(b.date)-new Date(a.date));
-  if(list.length===0){ wrap.innerHTML = `<div class="empty">কোনো পেমেন্ট নেই</div>`; return; }
-  if(paymentViewMode==="মাসিক"){
-    const years = Array.from(new Set(list.map(p=>yearFromDate(p.date)))).sort((a,b)=>b-a);
-    let html = "";
-    years.forEach(y=>{
-      html += `<div class="day-head">${y}</div><table><tr><th>মাস</th><th>মোট আয়</th><th>লেনদেন</th></tr>`;
-      MONTHS.forEach(m=>{
-        const rows = list.filter(p=>yearFromDate(p.date)===y && monthNameFromDate(p.date)===m);
-        if(rows.length===0) return;
-        const tot = rows.reduce((s,p)=>s+Number(p.amount||0),0);
-        html += `<tr><td>${m}</td><td>${fmtMoney(tot)}</td><td>${rows.length}</td></tr>`;
-      });
-      html += `</table>`;
-    });
-    wrap.innerHTML = html;
-  } else {
-    const dates = Array.from(new Set(list.map(p=>p.date))).sort((a,b)=>new Date(b)-new Date(a));
-    let html = "";
-    dates.forEach(d=>{
-      const rows = list.filter(p=>p.date===d);
-      const tot = rows.reduce((s,p)=>s+Number(p.amount||0),0);
-      html += `<div class="day-head">${fmtDate(d)} — মোট ${fmtMoney(tot)}</div><table>`;
-      rows.forEach(p=>{
-        const s = getStudent(p.studentId);
-        html += `<tr><td>${s?s.name:p.studentId}</td><td>${p.forMonth}</td><td>${fmtMoney(p.amount)}</td>
-          <td><button class="btn small secondary" onclick="openReceipt('${p.id}')">রিসিট</button></td></tr>`;
-      });
-      html += `</table>`;
-    });
-    wrap.innerHTML = html;
-  }
-}
-let receiptPaymentId = null;
-function openReceipt(pid){ receiptPaymentId = pid; currentTab='receipt'; render(); window.scrollTo(0,0); }
 function renderReceipt(){
   const app = document.getElementById('app');
-  const p = db.payments.find(x=>x.id===receiptPaymentId);
+  const p = db.payments.find(x=>x.id===activeReceiptId);
   if(!p){ app.innerHTML = `<div class="empty">রিসিট পাওয়া যায়নি</div>`; return; }
-  const s = getStudent(p.studentId) || {};
-  const due = s.id ? studentDue(s) : 0;
+  
+  const s = getStudent(p.studentId);
+  const due = s ? studentDue(s) : 0;
+
   app.innerHTML = `
-    <button class="btn secondary no-print" onclick="showTab('payments')">← ফিরে যান</button>
-    <div class="card receipt">
-      ${printHeaderHtml("Fee Receipt")}
-      <table style="width:100%">
-        <tr><td>Receipt No</td><td style="text-align:right;font-weight:bold">${p.receiptNo}</td></tr>
-        <tr><td>Date</td><td style="text-align:right">${fmtDate(p.date)}</td></tr>
-        <tr><td>Student ID</td><td style="text-align:right">${s.id||'-'}</td></tr>
-        <tr><td>Name</td><td style="text-align:right">${s.name||'-'}</td></tr>
-        <tr><td>Class</td><td style="text-align:right">${s.class||'-'}</td></tr>
-        <tr><td>Guardian</td><td style="text-align:right">${s.guardian||'-'}</td></tr>
-        <tr><td>Fee For (Month)</td><td style="text-align:right">${p.forMonth}</td></tr>
-        <tr><td>Payment Method</td><td style="text-align:right">${p.method}</td></tr>
+    <div class="no-print" style="margin-bottom:12px;display:flex;gap:8px">
+      <button class="btn secondary" onclick="showTab('payments')">← ফিরে যান</button>
+      <button class="btn" onclick="window.print()">🖨️ প্রিন্ট / পিডিএফ ডাউনলোড</button>
+    </div>
+    <div class="receipt">
+      ${printHeaderHtml("পেমেন্ট রিসিট")}
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:12px;">
+        <div><b>রিসিট নম্বর:</b> ${p.id}</div>
+        <div><b>তারিখ:</b> ${fmtDate(p.date)}</div>
+      </div>
+      <table>
+        <tr><td style="color:var(--muted)">স্টুডেন্ট আইডি:</td><td><b>${s?s.id:'-'}</b></td></tr>
+        <tr><td style="color:var(--muted)">স্টুডেন্টের নাম:</td><td><b>${s?s.name:'-'}</b></td></tr>
+        <tr><td style="color:var(--muted)">শ্রেণী:</td><td><b>${s?s.class:'-'}</b></td></tr>
+        <tr><td style="color:var(--muted)">অভিভাবক:</td><td>${s?s.guardian||'-':'-'}</td></tr>
+        <tr><td style="color:var(--muted)">কোন মাসের ফি:</td><td><b>${p.forMonth}</b></td></tr>
+        <tr><td style="color:var(--muted)">পেমেন্ট মাধ্যম:</td><td>${p.method} ${p.note?`(${p.note})`:''}</td></tr>
       </table>
-      <div class="amount-box">${fmtMoney(p.amount)}</div>
-      <table style="width:100%">
-        <tr><td>Due After This Payment</td><td style="text-align:right;color:${due>0?'var(--danger)':'var(--accent)'}">${fmtMoney(Math.max(0,due))}</td></tr>
-        <tr><td>Received By</td><td style="text-align:right">${p.receivedBy||'-'}</td></tr>
-      </table>
+      <div class="amount-box">
+        জমা পরিমাণ: ${fmtMoney(p.amount)}
+      </div>
+      <div style="font-size:12px;text-align:right;color:${due>0?'var(--danger)':'var(--accent)'}">
+        বর্তমান অবশিষ্ট বকেয়া: <b>${fmtMoney(Math.max(0,due))}</b>
+      </div>
       <div class="sign-row">
-        <div>Guardian's Signature</div>
-        <div>Receiver's Signature</div>
+        <div>অভিভাবকের স্বাক্ষর</div>
+        <div>কর্তৃপক্ষের স্বাক্ষর</div>
       </div>
     </div>
-    <button class="btn no-print" onclick="window.print()">🖨️ প্রিন্ট / PDF সেভ করুন</button>
-    <p class="no-print" style="font-size:12px;color:var(--muted);text-align:center">প্রিন্ট করার পর ছবি তুলে বা PDF সেভ করে WhatsApp/ইমেইলে ম্যানুয়ালি পাঠাতে পারবেন।</p>
   `;
 }
 
 /* ================== ATTENDANCE ================== */
 let attDate = todayStr();
 let attClass = CLASSES[0];
-let attWorking = {};
+
 function renderAttendance(){
   const app = document.getElementById('app');
   app.innerHTML = `
     <div class="card">
-      <h2>উপস্থিতি নিন</h2>
+      <h2>দৈনিক উপস্থিতি রেজিস্টার</h2>
       <div class="row2">
-        <div><label>তারিখ</label><input id="att_date" type="date" value="${attDate}"></div>
-        <div><label>শ্রেণী</label><select id="att_class">${CLASSES.map(c=>`<option ${c===attClass?'selected':''}>${c}</option>`).join("")}</select></div>
+        <div><label>তারিখ</label><input type="date" id="att_date" value="${attDate}"></div>
+        <div><label>শ্রেণী</label><select id="att_class">${CLASSES.map(c=>`<option ${attClass===c?'selected':''}>${c}</option>`).join("")}</select></div>
       </div>
       <div class="divider"></div>
-      <div id="attSummary" style="margin-bottom:8px;font-size:13px;color:var(--muted)"></div>
-      <div id="attList"></div>
+      <div id="attStudentList"></div>
       <button class="btn" id="saveAttBtn">উপস্থিতি সংরক্ষণ করুন</button>
     </div>
-    <div class="card">
-      <h2>আজকের অনুপস্থিত তালিকা (${fmtDate(attDate)})</h2>
-      <div id="absentList"></div>
-    </div>
   `;
-  document.getElementById('att_date').addEventListener('change', e=>{ attDate=e.target.value; attWorking={}; renderAttList(); renderAbsentList(); });
-  document.getElementById('att_class').addEventListener('change', e=>{ attClass=e.target.value; attWorking={}; renderAttList(); });
-  renderAttList();
-  renderAbsentList();
-  document.getElementById('saveAttBtn').addEventListener('click', saveAttendance);
-}
-function renderAttList(){
-  const wrap = document.getElementById('attList');
-  const list = db.students.filter(s=>s.class===attClass && s.status!=="নিষ্ক্রিয়");
-  if(list.length===0){ wrap.innerHTML = `<div class="empty">এই শ্রেণীতে কোনো স্টুডেন্ট নেই</div>`; return; }
-  list.forEach(s=>{
-    if(attWorking[s.id]===undefined){
-      const existing = db.attendance.find(a=>a.studentId===s.id && a.date===attDate);
-      attWorking[s.id] = existing ? existing.status : "উপস্থিত";
-    }
-  });
-  function pillClass(st){ return st==="উপস্থিত"?"present":(st==="অনুপস্থিত"?"absent":"leave"); }
-  wrap.innerHTML = `<div class="att-grid">${list.map(s=>`
-    <div class="att-item">
-      <span>${s.name}</span>
-      <button type="button" class="att-toggle ${pillClass(attWorking[s.id])}" data-sid="${s.id}">${attWorking[s.id]}</button>
-    </div>`).join("")}</div>`;
-  const cycle = {"উপস্থিত":"অনুপস্থিত","অনুপস্থিত":"ছুটি","ছুটি":"উপস্থিত"};
-  wrap.querySelectorAll('.att-toggle').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const sid = btn.dataset.sid;
-      attWorking[sid] = cycle[attWorking[sid]];
-      btn.textContent = attWorking[sid];
-      btn.className = "att-toggle " + pillClass(attWorking[sid]);
-      updateAttSummary();
+
+  document.getElementById('att_date').addEventListener('change', e=>{ attDate = e.target.value; loadAttList(); });
+  document.getElementById('att_class').addEventListener('change', e=>{ attClass = e.target.value; loadAttList(); });
+  
+  loadAttList();
+
+  document.getElementById('saveAttBtn').addEventListener('click', ()=>{
+    const items = document.querySelectorAll('.att-item');
+    items.forEach(it=>{
+      const stId = it.dataset.id;
+      const status = it.querySelector('.att-toggle').textContent;
+      
+      db.attendance = db.attendance.filter(a=>!(a.studentId===stId && a.date===attDate));
+      db.attendance.push({ studentId: stId, date: attDate, status: status });
     });
+    save();
+    toast("উপস্থিতি সংরক্ষিত হয়েছে");
   });
-  updateAttSummary();
 }
-function updateAttSummary(){
-  const vals = Object.values(attWorking);
-  const present = vals.filter(v=>v==="উপস্থিত").length;
-  const absent = vals.filter(v=>v==="অনুপস্থিত").length;
-  const leave = vals.filter(v=>v==="ছুটি").length;
-  document.getElementById('attSummary').textContent = `মোট ${vals.length} জন — উপস্থিত ${present}, অনুপস্থিত ${absent}, ছুটি ${leave}`;
+
+function loadAttList(){
+  const wrap = document.getElementById('attStudentList');
+  const stus = activeStudents(attClass);
+  
+  if(stus.length===0){ wrap.innerHTML = `<div class="empty">এই শ্রেণীতে কোনো সক্রিয় স্টুডেন্ট নেই</div>`; return; }
+
+  const existingMap = {};
+  db.attendance.filter(a=>a.date===attDate).forEach(a=>existingMap[a.studentId] = a.status);
+
+  wrap.innerHTML = `<div class="att-grid">
+    ${stus.map(s=>{
+      const status = existingMap[s.id] || "উপস্থিত";
+      let btnCls = "present";
+      if(status==="অনুপস্থিত") btnCls = "absent";
+      if(status==="ছুটি") btnCls = "leave";
+
+      return `
+        <div class="att-item" data-id="${s.id}">
+          <div>
+            <b>${s.name}</b> <br>
+            <small style="color:var(--muted)">আইডি: ${s.id}</small>
+          </div>
+          <button type="button" class="att-toggle ${btnCls}" onclick="toggleAttStatus(this)">${status}</button>
+        </div>
+      `;
+    }).join("")}
+  </div>`;
 }
-function saveAttendance(){
-  Object.keys(attWorking).forEach(sid=>{
-    let rec = db.attendance.find(a=>a.studentId===sid && a.date===attDate);
-    if(!rec){ rec = {studentId:sid, date:attDate, status:attWorking[sid]}; db.attendance.push(rec); }
-    else rec.status = attWorking[sid];
-  });
-  save();
-  toast("উপস্থিতি সংরক্ষণ হয়েছে");
-  renderAbsentList();
-  toast("উপস্থিতি সংরক্ষণ হয়েছে");
-}
-function renderAbsentList(){
-  const wrap = document.getElementById('absentList');
-  const recs = db.attendance.filter(a=>a.date===attDate && a.status!=="উপস্থিত");
-  if(recs.length===0){ wrap.innerHTML = `<div class="empty">এই তারিখে কোনো অনুপস্থিতি রেকর্ড নেই (অথবা সবাই উপস্থিত)</div>`; return; }
-  const byClass = {};
-  recs.forEach(r=>{
-    const s = getStudent(r.studentId); if(!s) return;
-    byClass[s.class] = byClass[s.class]||[];
-    byClass[s.class].push({name:s.name, status:r.status});
-  });
-  wrap.innerHTML = Object.keys(byClass).map(c=>`
-    <div class="day-head">${c}</div>
-    <table>${byClass[c].map(x=>`<tr><td>${x.name}</td><td><span class="pill ${x.status==='অনুপস্থিত'?'bad':'warn'}">${x.status}</span></td></tr>`).join("")}</table>
-  `).join("");
+
+function toggleAttStatus(btn){
+  if(btn.textContent==="উপস্থিত"){
+    btn.textContent = "অনুপস্থিত";
+    btn.className = "att-toggle absent";
+  } else if(btn.textContent==="অনুপস্থিত"){
+    btn.textContent = "ছুটি";
+    btn.className = "att-toggle leave";
+  } else {
+    btn.textContent = "উপস্থিত";
+    btn.className = "att-toggle present";
+  }
 }
 
 /* ================== EXAMS ================== */
-let examMode = "batch";
-let examBatchType = db.settings.examTypes[0];
-let examBatchClass = CLASSES[0];
-let examBatchDate = todayStr();
-let examBatchSubjects = subjectTemplateFor(db.settings.examTypes[0]);
-let examIndType = db.settings.examTypes[0];
-let examIndSubjects = subjectTemplateFor(db.settings.examTypes[0]);
+let examClass = CLASSES[0];
+let examType = EXAM_TYPES[0];
+let activeExamId = null;
 
 function renderExams(){
   const app = document.getElementById('app');
   app.innerHTML = `
     <div class="card">
-      <div class="seg">
-        <button data-m="batch" class="${examMode==='batch'?'active':''}">ক্লাস অনুযায়ী (ব্যাচ)</button>
-        <button data-m="individual" class="${examMode==='individual'?'active':''}">একক শিক্ষার্থী</button>
+      <h2>পরীক্ষার নম্বর ইনপুট</h2>
+      <div class="row3">
+        <div><label>শ্রেণী</label><select id="ex_class">${CLASSES.map(c=>`<option ${examClass===c?'selected':''}>${c}</option>`).join("")}</select></div>
+        <div><label>পরীক্ষার ধরন</label><select id="ex_type">${db.settings.examTypes.map(t=>`<option ${examType===t?'selected':''}>${t}</option>`).join("")}</select></div>
+        <div><label>তারিখ</label><input type="date" id="ex_date" value="${todayStr()}"></div>
       </div>
-      <div id="examModeArea"></div>
+      <div class="divider"></div>
+      <h3>বিষয় এবং পূর্ণমান তালিকা</h3>
+      <div id="exSubjectsWrap"></div>
+      <button class="btn secondary small" id="addExSubBtn" style="margin-top:6px">+ নতুন বিষয় যোগ করুন</button>
+      
+      <div class="divider"></div>
+      <h3>স্টুডেন্টদের প্রাপ্ত নম্বর</h3>
+      <div id="exStudentsMarksWrap"></div>
+      
+      <button class="btn" id="saveExamBtn">ফলাফল সংরক্ষণ করুন</button>
     </div>
+
     <div class="card">
-      <h2>সাম্প্রতিক পরীক্ষার ফলাফল</h2>
-      <div class="table-wrap">${examsTableHtml()}</div>
+      <h2>মেধা তালিকা ও ক্লাস রেজাল্ট</h2>
+      <button class="btn secondary" onclick="openClassResult()">📊 এই ক্লাসের মেধানুসারী রেজাল্ট সিট দেখুন</button>
     </div>
   `;
-  app.querySelector('.seg').addEventListener('click', e=>{
-    const b=e.target.closest('button'); if(!b) return;
-    examMode = b.dataset.m; renderExams();
+
+  document.getElementById('ex_class').addEventListener('change', e=>{ examClass = e.target.value; renderExamSubjsAndStudents(); });
+  document.getElementById('ex_type').addEventListener('change', e=>{ examType = e.target.value; currentExSubjs = subjectTemplateFor(examType); renderExamSubjsAndStudents(); });
+
+  if(!window.currentExSubjs) window.currentExSubjs = subjectTemplateFor(examType);
+
+  document.getElementById('addExSubBtn').addEventListener('click', ()=>{
+    window.currentExSubjs.push({name:"", cqFull:10, mcqFull:0});
+    renderExamSubjs();
   });
-  if(examMode==="batch") renderExamBatchArea(); else renderExamIndividualArea();
-}
-function subjectRowsHtml(subjects, withObtained){
-  return subjects.map((sub,i)=>`
-    <div class="subj-row" style="flex-wrap:wrap">
-      <input class="subname-inp" data-i="${i}" placeholder="বিষয়ের নাম" value="${sub.name}" style="flex:1 1 100%;margin-bottom:4px">
-      <input class="cqfull-inp" data-i="${i}" type="number" placeholder="CQ পূর্ণমান" value="${sub.cqFull||0}" style="max-width:90px">
-      <input class="mcqfull-inp" data-i="${i}" type="number" placeholder="MCQ পূর্ণমান" value="${sub.mcqFull||0}" style="max-width:90px">
-      ${withObtained?`<input class="cqobt-inp" data-i="${i}" type="number" placeholder="CQ প্রাপ্ত" value="${sub.cqObtained||0}" style="max-width:90px">
-      <input class="mcqobt-inp" data-i="${i}" type="number" placeholder="MCQ প্রাপ্ত" value="${sub.mcqObtained||0}" style="max-width:90px">
-      <span style="font-size:12px;color:var(--muted);white-space:nowrap">মোট: <b class="subtotal-disp" data-i="${i}">${(Number(sub.cqObtained||0)+Number(sub.mcqObtained||0))}</b>/${(Number(sub.cqFull||0)+Number(sub.mcqFull||0))}</span>`:""}
-      <button type="button" class="rm-subj" data-i="${i}">✕</button>
-    </div>`).join("");
-}
-function renderExamBatchArea(){
-  const area = document.getElementById('examModeArea');
-  area.innerHTML = `
-    <div class="row3">
-      <div><label>ধরন</label><select id="eb_type">${db.settings.examTypes.map(t=>`<option ${t===examBatchType?'selected':''}>${t}</option>`).join("")}</select></div>
-      <div><label>শ্রেণী</label><select id="eb_class">${CLASSES.map(c=>`<option ${c===examBatchClass?'selected':''}>${c}</option>`).join("")}</select></div>
-      <div><label>তারিখ</label><input id="eb_date" type="date" value="${examBatchDate}"></div>
-    </div>
-    <h3 class="sub-h">বিষয় ও পূর্ণমান</h3>
-    <div id="eb_subjWrap">${subjectRowsHtml(examBatchSubjects,false)}</div>
-    <button type="button" class="btn secondary" id="eb_addSubj">+ বিষয় যোগ করুন</button>
-    <button type="button" class="btn secondary" id="eb_saveTemplateBtn">💾 এই বিষয়সেট "${examBatchType}"-এর ডিফল্ট হিসেবে সংরক্ষণ করুন</button>
-    <button type="button" class="btn" id="eb_loadBtn">শিক্ষার্থীদের তালিকা লোড করুন</button>
-    <div id="eb_grid"></div>
-  `;
-  document.getElementById('eb_type').addEventListener('change', e=>{
-    examBatchType = e.target.value;
-    examBatchSubjects = subjectTemplateFor(examBatchType);
-    renderExamBatchArea();
-  });
-  document.getElementById('eb_class').addEventListener('change', e=>{ examBatchClass = e.target.value; });
-  document.getElementById('eb_date').addEventListener('change', e=>{ examBatchDate = e.target.value; });
-  bindSubjectRowEvents('eb_subjWrap', examBatchSubjects, ()=>renderExamBatchArea());
-  document.getElementById('eb_addSubj').addEventListener('click', ()=>{
-    examBatchSubjects.push({name:"",cqFull:100,mcqFull:0});
-    renderExamBatchArea();
-  });
-  document.getElementById('eb_loadBtn').addEventListener('click', renderBatchGrid);
-  document.getElementById('eb_saveTemplateBtn').addEventListener('click', ()=>{
-    db.settings.subjectTemplates[examBatchType] = JSON.parse(JSON.stringify(examBatchSubjects));
-    save();
-    toast("ডিফল্ট বিষয়সেট সংরক্ষণ হয়েছে — পরের বার এই ধরন বেছে নিলে এটাই আসবে");
-  });
-}
-function bindSubjectRowEvents(wrapId, subjArr, onRemove){
-  const wrap = document.getElementById(wrapId);
-  wrap.querySelectorAll('.subname-inp').forEach(inp=>{
-    inp.addEventListener('input', ()=>{ subjArr[Number(inp.dataset.i)].name = inp.value; });
-  });
-  wrap.querySelectorAll('.cqfull-inp').forEach(inp=>{
-    inp.addEventListener('input', ()=>{ subjArr[Number(inp.dataset.i)].cqFull = Number(inp.value||0); });
-  });
-  wrap.querySelectorAll('.mcqfull-inp').forEach(inp=>{
-    inp.addEventListener('input', ()=>{ subjArr[Number(inp.dataset.i)].mcqFull = Number(inp.value||0); });
-  });
-  wrap.querySelectorAll('.rm-subj').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ subjArr.splice(Number(btn.dataset.i),1); onRemove(); });
-  });
-}
-let batchMarks = {};
-function renderBatchGrid(){
-  const list = db.students.filter(s=>s.class===examBatchClass && s.status!=="নিষ্ক্রিয়");
-  const gridWrap = document.getElementById('eb_grid');
-  if(list.length===0){ gridWrap.innerHTML = `<div class="empty">এই শ্রেণীতে কোনো স্টুডেন্ট নেই</div>`; return; }
-  batchMarks = {};
-  list.forEach(s=>{ batchMarks[s.id] = examBatchSubjects.map(()=>({cq:0,mcq:0})); });
-  gridWrap.innerHTML = `
-    <div class="divider"></div>
-    <h3 class="sub-h">নম্বর দিন</h3>
-    <div class="table-wrap"><table>
-      <tr><th>নাম</th>${examBatchSubjects.map(sub=>`<th colspan="2">${sub.name||'বিষয়'}<br><span style="font-weight:normal">(CQ ${sub.cqFull||0} + MCQ ${sub.mcqFull||0})</span></th>`).join("")}<th>মোট</th></tr>
-      <tr><th></th>${examBatchSubjects.map(()=>`<th>CQ</th><th>MCQ</th>`).join("")}<th></th></tr>
-      ${list.map(s=>`<tr>
-        <td>${s.name}</td>
-        ${examBatchSubjects.map((sub,i)=>`
-          <td><input type="number" style="width:52px" class="batchMarkInp" data-sid="${s.id}" data-i="${i}" data-part="cq" value="0"></td>
-          <td><input type="number" style="width:52px" class="batchMarkInp" data-sid="${s.id}" data-i="${i}" data-part="mcq" value="0"></td>`).join("")}
-        <td class="batchTotalCell" data-sid="${s.id}">0</td>
-      </tr>`).join("")}
-    </table></div>
-    <button class="btn" id="eb_saveBtn">সব সংরক্ষণ করুন</button>
-  `;
-  gridWrap.querySelectorAll('.batchMarkInp').forEach(inp=>{
-    inp.addEventListener('input', ()=>{
-      const sid = inp.dataset.sid, i = Number(inp.dataset.i), part = inp.dataset.part;
-      batchMarks[sid][i][part] = Number(inp.value||0);
-      const total = batchMarks[sid].reduce((a,m)=>a+m.cq+m.mcq,0);
-      gridWrap.querySelector(`.batchTotalCell[data-sid="${sid}"]`).textContent = total;
-    });
-  });
-  document.getElementById('eb_saveBtn').addEventListener('click', ()=>{
-    list.forEach(s=>{
-      db.meta.examSeq++;
+
+  renderExamSubjsAndStudents();
+
+  document.getElementById('saveExamBtn').addEventListener('click', ()=>{
+    const stus = activeStudents(examClass);
+    if(stus.length===0){ toast("কোনো স্টুডেন্ট নেই"); return; }
+    
+    const dt = document.getElementById('ex_date').value;
+    
+    stus.forEach(s=>{
+      const subs = window.currentExSubjs.map((sub, idx)=>{
+        const cq = Number(document.getElementById(`cq_${s.id}_${idx}`)?.value||0);
+        const mcq = Number(document.getElementById(`mcq_${s.id}_${idx}`)?.value||0);
+        return {
+          name: sub.name || `বিষয় ${idx+1}`,
+          cqFull: Number(sub.cqFull||0),
+          mcqFull: Number(sub.mcqFull||0),
+          cqObtained: cq,
+          mcqObtained: mcq
+        };
+      });
+
+      db.meta.examSeq = (db.meta.examSeq||0)+1;
+      const exId = `EX-${pad(db.meta.examSeq,4)}`;
+
       db.exams.push({
-        id: "EXM-"+pad(db.meta.examSeq,5),
+        id: exId,
         studentId: s.id,
-        type: examBatchType,
-        date: examBatchDate,
-        subjects: examBatchSubjects.map((sub,i)=>({name:sub.name||('Subject '+(i+1)), cqFull:sub.cqFull||0, mcqFull:sub.mcqFull||0, cqObtained:batchMarks[s.id][i].cq, mcqObtained:batchMarks[s.id][i].mcq}))
+        type: examType,
+        date: dt,
+        subjects: subs
       });
     });
+
     save();
-    toast(`${list.length} জন শিক্ষার্থীর ফলাফল সংরক্ষণ হয়েছে`);
-    openClassResult(examBatchType, examBatchDate, examBatchClass);
+    toast("পরীক্ষার নম্বর সংরক্ষিত হয়েছে");
   });
 }
-function renderExamIndividualArea(){
-  const area = document.getElementById('examModeArea');
-  area.innerHTML = `
-    <label>স্টুডেন্ট</label>
-    <select id="ei_student"><option value="">-- নির্বাচন করুন --</option>
-      ${db.students.map(s=>`<option value="${s.id}">${s.id} — ${s.name} (${s.class})</option>`).join("")}
-    </select>
-    <div class="row2">
-      <div><label>ধরন</label><select id="ei_type">${db.settings.examTypes.map(t=>`<option ${t===examIndType?'selected':''}>${t}</option>`).join("")}</select></div>
-      <div><label>তারিখ</label><input id="ei_date" type="date" value="${todayStr()}"></div>
+
+function renderExamSubjsAndStudents(){
+  renderExamSubjs();
+  renderExamStudents();
+}
+
+function renderExamSubjs(){
+  const wrap = document.getElementById('exSubjectsWrap');
+  wrap.innerHTML = window.currentExSubjs.map((s, idx)=>`
+    <div class="subj-row">
+      <input placeholder="বিষয়ের নাম" value="${s.name}" onchange="window.currentExSubjs[${idx}].name=this.value">
+      <input class="full-inp" type="number" placeholder="CQ পূর্ণমান" value="${s.cqFull}" onchange="window.currentExSubjs[${idx}].cqFull=Number(this.value)">
+      <input class="full-inp" type="number" placeholder="MCQ পূর্ণমান" value="${s.mcqFull}" onchange="window.currentExSubjs[${idx}].mcqFull=Number(this.value)">
+      <button onclick="window.currentExSubjs.splice(${idx},1); renderExamSubjsAndStudents();">✕</button>
     </div>
-    <h3 class="sub-h">বিষয়, পূর্ণমান ও প্রাপ্ত নম্বর</h3>
-    <div id="ei_subjWrap">${subjectRowsHtml(examIndSubjects,true)}</div>
-    <button type="button" class="btn secondary" id="ei_addSubj">+ বিষয় যোগ করুন</button>
-    <button type="button" class="btn secondary" id="ei_saveTemplateBtn">💾 এই বিষয়সেট "${examIndType}"-এর ডিফল্ট হিসেবে সংরক্ষণ করুন</button>
-    <button type="button" class="btn" id="ei_saveBtn">ফলাফল সংরক্ষণ করুন</button>
-  `;
-  document.getElementById('ei_type').addEventListener('change', e=>{
-    examIndType = e.target.value;
-    examIndSubjects = subjectTemplateFor(examIndType);
-    renderExamIndividualArea();
-  });
-  bindSubjIndEvents();
-  document.getElementById('ei_addSubj').addEventListener('click', ()=>{
-    examIndSubjects.push({name:"",cqFull:100,mcqFull:0,cqObtained:0,mcqObtained:0});
-    renderExamIndividualArea();
-  });
-  document.getElementById('ei_saveTemplateBtn').addEventListener('click', ()=>{
-    db.settings.subjectTemplates[examIndType] = examIndSubjects.map(s=>({name:s.name, cqFull:s.cqFull, mcqFull:s.mcqFull}));
-    save();
-    toast("ডিফল্ট বিষয়সেট সংরক্ষণ হয়েছে");
-  });
-  document.getElementById('ei_saveBtn').addEventListener('click', ()=>{
-    const sid = document.getElementById('ei_student').value;
-    if(!sid){ toast("স্টুডেন্ট নির্বাচন করুন"); return; }
-    db.meta.examSeq++;
-    const ex = {
-      id: "EXM-"+pad(db.meta.examSeq,5),
-      studentId: sid,
-      type: examIndType,
-      date: document.getElementById('ei_date').value || todayStr(),
-      subjects: examIndSubjects.map((s,i)=>({name:s.name||('Subject '+(i+1)), cqFull:s.cqFull||0, mcqFull:s.mcqFull||0, cqObtained:s.cqObtained||0, mcqObtained:s.mcqObtained||0}))
-    };
-    db.exams.push(ex);
-    save();
-    toast("ফলাফল সংরক্ষণ হয়েছে");
-    openReportCard(ex.id);
-  });
+  `).join("");
 }
-function bindSubjIndEvents(){
-  const wrap = document.getElementById('ei_subjWrap');
-  wrap.querySelectorAll('.subname-inp').forEach(inp=>{
-    inp.addEventListener('input', ()=>{ examIndSubjects[Number(inp.dataset.i)].name = inp.value; });
-  });
-  wrap.querySelectorAll('.cqfull-inp').forEach(inp=>{
-    inp.addEventListener('input', ()=>{ examIndSubjects[Number(inp.dataset.i)].cqFull = Number(inp.value||0); refreshIndTotal(inp.dataset.i); });
-  });
-  wrap.querySelectorAll('.mcqfull-inp').forEach(inp=>{
-    inp.addEventListener('input', ()=>{ examIndSubjects[Number(inp.dataset.i)].mcqFull = Number(inp.value||0); refreshIndTotal(inp.dataset.i); });
-  });
-  wrap.querySelectorAll('.cqobt-inp').forEach(inp=>{
-    inp.addEventListener('input', ()=>{ examIndSubjects[Number(inp.dataset.i)].cqObtained = Number(inp.value||0); refreshIndTotal(inp.dataset.i); });
-  });
-  wrap.querySelectorAll('.mcqobt-inp').forEach(inp=>{
-    inp.addEventListener('input', ()=>{ examIndSubjects[Number(inp.dataset.i)].mcqObtained = Number(inp.value||0); refreshIndTotal(inp.dataset.i); });
-  });
-  wrap.querySelectorAll('.rm-subj').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ examIndSubjects.splice(Number(btn.dataset.i),1); renderExamIndividualArea(); });
-  });
+
+function renderExamStudents(){
+  const wrap = document.getElementById('exStudentsMarksWrap');
+  const stus = activeStudents(examClass);
+  if(stus.length===0){ wrap.innerHTML = `<div class="empty">এই শ্রেণীতে কোনো সক্রিয় স্টুডেন্ট নেই</div>`; return; }
+
+  wrap.innerHTML = stus.map(s=>`
+    <div style="background:#f9fbfd;border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px">
+      <b>${s.name}</b> <small style="color:var(--muted)">(${s.id})</small>
+      <div style="margin-top:6px" class="table-wrap">
+        <table>
+          <tr><th>বিষয়</th><th>CQ প্রাপ্ত</th><th>MCQ প্রাপ্ত</th></tr>
+          ${window.currentExSubjs.map((sub, idx)=>`
+            <tr>
+              <td>${sub.name || 'বিষয় '+(idx+1)} <small>(${sub.cqFull+sub.mcqFull})</small></td>
+              <td><input type="number" class="obt-inp" id="cq_${s.id}_${idx}" value="0"></td>
+              <td><input type="number" class="obt-inp" id="mcq_${s.id}_${idx}" value="0"></td>
+            </tr>
+          `).join("")}
+        </table>
+      </div>
+    </div>
+  `).join("");
 }
-function refreshIndTotal(i){
-  const wrap = document.getElementById('ei_subjWrap');
-  const disp = wrap.querySelector(`.subtotal-disp[data-i="${i}"]`);
-  const s = examIndSubjects[Number(i)];
-  if(disp) disp.textContent = Number(s.cqObtained||0)+Number(s.mcqObtained||0);
-}
-function examsTableHtml(){
-  const list = [...db.exams].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,30);
-  if(list.length===0) return `<div class="empty">কোনো ফলাফল নেই</div>`;
-  return `<table><tr><th>স্টুডেন্ট</th><th>ধরন</th><th>তারিখ</th><th>প্রাপ্ত</th><th>গ্রেড</th><th></th></tr>
-    ${list.map(e=>{
-      const s = getStudent(e.studentId);
-      return `<tr><td>${s?s.name:e.studentId}</td><td>${e.type||'-'}</td><td>${fmtDate(e.date)}</td><td>${examTotal(e)}/${examFull(e)}</td><td>${gradeFromPct(examPct(e))}</td>
-      <td><button class="btn small secondary" onclick="openReportCard('${e.id}')">দেখুন</button></td></tr>`;
-    }).join("")}
-  </table>`;
-}
-let reportExamId = null;
-function openReportCard(eid){ reportExamId = eid; currentTab='reportCard'; render(); window.scrollTo(0,0); }
+
+function openReportCard(exId){ activeExamId = exId; currentTab='reportCard'; render(); window.scrollTo(0,0); }
+
 function renderReportCard(){
   const app = document.getElementById('app');
-  const e = db.exams.find(x=>x.id===reportExamId);
-  if(!e){ app.innerHTML = `<div class="empty">পাওয়া যায়নি</div>`; return; }
-  const s = getStudent(e.studentId) || {};
-  const att = s.id ? studentAttendancePct(s.id) : null;
+  const ex = db.exams.find(e=>e.id===activeExamId);
+  if(!ex){ app.innerHTML = `<div class="empty">পরীক্ষার রিপোর্ট পাওয়া যায়নি</div>`; return; }
+  
+  const s = getStudent(ex.studentId);
+
   app.innerHTML = `
-    <button class="btn secondary no-print" onclick="showTab('exams')">← ফিরে যান</button>
+    <div class="no-print" style="margin-bottom:12px;display:flex;gap:8px">
+      <button class="btn secondary" onclick="showTab('students')">← ফিরে যান</button>
+      <button class="btn" onclick="window.print()">🖨️ প্রিন্ট / পিডিএফ ڈاؤنলোড</button>
+    </div>
     <div class="card receipt">
-      ${printHeaderHtml("Report Card")}
-      <table style="width:100%">
-        <tr><td>Name</td><td style="text-align:right">${s.name||'-'}</td></tr>
-        <tr><td>Student ID</td><td style="text-align:right">${s.id||'-'}</td></tr>
-        <tr><td>Class</td><td style="text-align:right">${s.class||'-'}</td></tr>
-        <tr><td>Exam Type</td><td style="text-align:right">${EXAM_TYPE_EN[e.type]||e.type||'-'}</td></tr>
-        <tr><td>Date</td><td style="text-align:right">${fmtDate(e.date)}</td></tr>
-        <tr><td>Overall Attendance</td><td style="text-align:right">${att===null?'-':att+'%'}</td></tr>
-      </table>
-      <div class="divider"></div>
-      <table style="width:100%">
-        <tr><th style="text-align:left">Subject</th><th style="text-align:right">CQ</th><th style="text-align:right">MCQ</th><th style="text-align:right">Total</th><th style="text-align:right">Full</th></tr>
-        ${(e.subjects||[]).map(sub=>`<tr><td>${sub.name}</td><td style="text-align:right">${sub.cqObtained||0}/${sub.cqFull||0}</td><td style="text-align:right">${sub.mcqObtained||0}/${sub.mcqFull||0}</td><td style="text-align:right;font-weight:bold">${subTotal(sub)}</td><td style="text-align:right">${subFull(sub)}</td></tr>`).join("")}
-      </table>
-      <div class="amount-box">Total: ${examTotal(e)}/${examFull(e)} (${examPct(e)}%) — Grade: ${gradeFromPct(examPct(e))}</div>
+      ${printHeaderHtml("অকডেমিক রিপোর্ট কার্ড")}
+      <div class="profile-grid" style="margin-bottom:14px">
+        <div class="k">স্টুডেন্টের নাম:</div><div class="v">${s?s.name:'-'}</div>
+        <div class="k">আইডি ও শ্রেণী:</div><div class="v">${s?s.id:''} (${s?s.class:''})</div>
+        <div class="k">পরীক্ষার ধরন:</div><div class="v">${ex.type||'-'}</div>
+        <div class="k">তারিখ:</div><div class="v">${fmtDate(ex.date)}</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <tr><th>বিষয়</th><th>CQ প্রাপ্ত</th><th>MCQ প্রাপ্ত</th><th>মোট</th><th>গ্রেড</th></tr>
+          ${(ex.subjects||[]).map(sub=>{
+            const tot = subTotal(sub);
+            const full = subFull(sub);
+            const pct = full>0 ? (tot/full)*100 : 0;
+            return `<tr>
+              <td>${sub.name}</td>
+              <td>${subCqObtained(sub)} / ${sub.cqFull}</td>
+              <td>${subMcqObtained(sub)} / ${sub.mcqFull}</td>
+              <td><b>${tot}</b> / ${full}</td>
+              <td><span class="pill ${pct>=40?'ok':'bad'}">${gradeFromPct(pct)}</span></td>
+            </tr>`;
+          }).join("")}
+          <tr style="font-weight:bold;background:#f0f3f7">
+            <td colspan="3">সর্বমোট প্রাপ্ত নম্বর</td>
+            <td>${examTotal(ex)} / ${examFull(ex)}</td>
+            <td><span class="pill ${examPct(ex)>=40?'ok':'bad'}">${gradeFromPct(examPct(ex))}</span></td>
+          </tr>
+        </table>
+      </div>
       <div class="sign-row">
-        <div>Guardian's Signature</div>
-        <div>Teacher's Signature</div>
+        <div>অভিভাবকের স্বাক্ষর</div>
+        <div>শিক্ষকের স্বাক্ষর</div>
       </div>
     </div>
-    <button class="btn no-print" onclick="window.print()">🖨️ প্রিন্ট / PDF সেভ করুন</button>
   `;
 }
-let classResultCtx = null;
-function openClassResult(type, date, cls){ classResultCtx = {type,date,cls}; currentTab='classResult'; render(); window.scrollTo(0,0); }
+
+function openClassResult(){ currentTab='classResult'; render(); window.scrollTo(0,0); }
+
 function renderClassResult(){
   const app = document.getElementById('app');
-  if(!classResultCtx){ app.innerHTML = `<div class="empty">কোনো ক্লাস রেজাল্ট নির্বাচিত নেই</div>`; return; }
-  const {type,date,cls} = classResultCtx;
-  const students = db.students.filter(s=>s.class===cls);
-  const records = db.exams.filter(e=>e.type===type && e.date===date && students.some(s=>s.id===e.studentId));
-  if(records.length===0){ app.innerHTML = `<button class="btn secondary no-print" onclick="showTab('exams')">← ফিরে যান</button><div class="empty">এই ক্লাস/তারিখ/ধরনের কোনো রেজাল্ট নেই</div>`; return; }
-  const subjNames = records[0].subjects.map(s=>s.name);
-  app.innerHTML = `
-    <button class="btn secondary no-print" onclick="showTab('exams')">← ফিরে যান</button>
-    <div class="card receipt">
-      ${printHeaderHtml("Class Result Sheet")}
-      <table style="width:100%;margin-bottom:8px">
-        <tr><td>Class</td><td style="text-align:right">${cls}</td></tr>
-        <tr><td>Exam Type</td><td style="text-align:right">${EXAM_TYPE_EN[type]||type}</td></tr>
-        <tr><td>Date</td><td style="text-align:right">${fmtDate(date)}</td></tr>
-      </table>
-      <div class="table-wrap"><table>
-        <tr><th>ID</th><th>Name</th>${subjNames.map(n=>`<th>${n}</th>`).join("")}<th>Total</th><th>%</th><th>Grade</th></tr>
-        ${records.map(r=>{
-          const s = getStudent(r.studentId);
-          return `<tr><td>${s?s.id:r.studentId}</td><td>${s?s.name:'-'}</td>
-          ${r.subjects.map(sub=>`<td style="text-align:right">${subTotal(sub)}</td>`).join("")}
-          <td style="text-align:right">${examTotal(r)}/${examFull(r)}</td><td style="text-align:right">${examPct(r)}%</td><td style="text-align:right">${gradeFromPct(examPct(r))}</td></tr>`;
-        }).join("")}
-      </table></div>
-      <p style="font-size:11px;color:var(--muted);margin-top:6px">প্রতিটা বিষয়ের নম্বর CQ+MCQ মিলিয়ে মোট দেখানো হয়েছে। বিস্তারিত CQ/MCQ ভাঙা দেখতে সেই শিক্ষার্থীর পৃথক রিপোর্ট কার্ড দেখুন।</p>
-    </div>
-    <button class="btn no-print" onclick="window.print()">🖨️ প্রিন্ট / PDF সেভ করুন</button>
-  `;
-}
-
-/* ================== REPORTS (FLEXIBLE) ================== */
-let reportType = "সম্পূর্ণ"; // সম্পূর্ণ, রেজাল্ট, উপস্থিতি, পেমেন্ট, ভর্তি
-let reportPeriod = "দৈনিক"; // দৈনিক, সাপ্তাহিক, মাসিক, বাৎসরিক, কাস্টম
-let reportDetail = "সংক্ষিপ্ত"; // সংক্ষিপ্ত, বিস্তারিত
-let reportClassFilter = "সব";
-let reportExamTypeFilter = "সব";
-let reportDate = todayStr();
-let reportWeekStart = todayStr();
-let reportMonthSel = MONTHS[new Date().getMonth()];
-let reportYearForMonth = new Date().getFullYear();
-let reportYearSel = new Date().getFullYear();
-let reportCustomFrom = todayStr();
-let reportCustomTo = todayStr();
-
-function getReportRange(){
-  if(reportPeriod==="দৈনিক") return [reportDate, reportDate];
-  if(reportPeriod==="সাপ্তাহিক"){
-    const start = new Date(reportWeekStart);
-    const end = new Date(start); end.setDate(end.getDate()+6);
-    return [reportWeekStart, end.toISOString().slice(0,10)];
-  }
-  if(reportPeriod==="মাসিক"){
-    const mi = MONTHS.indexOf(reportMonthSel);
-    const start = new Date(reportYearForMonth, mi, 1);
-    const end = new Date(reportYearForMonth, mi+1, 0);
-    return [start.toISOString().slice(0,10), end.toISOString().slice(0,10)];
-  }
-  if(reportPeriod==="বাৎসরিক") return [`${reportYearSel}-01-01`, `${reportYearSel}-12-31`];
-  return [reportCustomFrom, reportCustomTo];
-}
-function datesInRange(start,end){
-  const arr=[]; let d=new Date(start); const e=new Date(end);
-  while(d<=e){ arr.push(d.toISOString().slice(0,10)); d.setDate(d.getDate()+1); }
-  return arr;
-}
-function reportClassScope(){ return reportClassFilter==="সব" ? CLASSES : [reportClassFilter]; }
-function studentAttendancePctInRange(id, dates){
-  const recs = db.attendance.filter(a=>a.studentId===id && dates.includes(a.date));
-  if(recs.length===0) return null;
-  const present = recs.filter(a=>a.status==="উপস্থিত").length;
-  return Math.round((present/recs.length)*100);
-}
-
-function renderReports(){
-  const app = document.getElementById('app');
-  const years = getYearsList();
-  app.innerHTML = `
-    <div class="card">
-      <h2>রিপোর্ট</h2>
-      <label>রিপোর্টের ধরন</label>
-      <div class="tag-row" id="repTypeTags">
-        ${["সম্পূর্ণ","রেজাল্ট","উপস্থিতি","পেমেন্ট","ভর্তি/অব্যাহতি"].map(t=>`<button data-t="${t}" class="${reportType===t?'active':''}">${t}</button>`).join("")}
-      </div>
-      <label>সময়কাল</label>
-      <div class="tag-row" id="repPeriodTags">
-        ${["দৈনিক","সাপ্তাহিক","মাসিক","বাৎসরিক","কাস্টম"].map(p=>`<button data-p="${p}" class="${reportPeriod===p?'active':''}">${p}</button>`).join("")}
-      </div>
-      <div id="repPeriodInputs"></div>
-      <div class="row2">
-        <div>
-          <label>শ্রেণী</label>
-          <select id="rep_class"><option ${reportClassFilter==='সব'?'selected':''}>সব</option>${CLASSES.map(c=>`<option ${reportClassFilter===c?'selected':''}>${c}</option>`).join("")}</select>
-        </div>
-        <div>
-          <label>বিস্তারিত মাত্রা</label>
-          <select id="rep_detail"><option ${reportDetail==='সংক্ষিপ্ত'?'selected':''}>সংক্ষিপ্ত</option><option ${reportDetail==='বিস্তারিত'?'selected':''}>বিস্তারিত</option></select>
-        </div>
-      </div>
-      ${reportType==="রেজাল্ট"?`<label>পরীক্ষার ধরন</label>
-      <select id="rep_examtype"><option ${reportExamTypeFilter==='সব'?'selected':''}>সব</option>${db.settings.examTypes.map(t=>`<option ${reportExamTypeFilter===t?'selected':''}>${t}</option>`).join("")}</select>`:""}
-      <div id="repBody"></div>
-      <button class="btn no-print" onclick="window.print()">🖨️ রিপোর্ট প্রিন্ট / PDF করুন</button>
-    </div>
-  `;
-  document.getElementById('repTypeTags').addEventListener('click', e=>{
-    const b=e.target.closest('button'); if(!b) return; reportType=b.dataset.t; renderReports();
+  const classExams = db.exams.filter(e=>{
+    const s = getStudent(e.studentId);
+    return s && s.class===examClass && e.type===examType;
   });
-  document.getElementById('repPeriodTags').addEventListener('click', e=>{
-    const b=e.target.closest('button'); if(!b) return; reportPeriod=b.dataset.p; renderReports();
-  });
-  document.getElementById('rep_class').addEventListener('change', e=>{ reportClassFilter=e.target.value; renderReportBody(); });
-  document.getElementById('rep_detail').addEventListener('change', e=>{ reportDetail=e.target.value; renderReportBody(); });
-  const etSel = document.getElementById('rep_examtype');
-  if(etSel) etSel.addEventListener('change', e=>{ reportExamTypeFilter=e.target.value; renderReportBody(); });
-  renderPeriodInputs(years);
-  renderReportBody();
-}
-function renderPeriodInputs(years){
-  const wrap = document.getElementById('repPeriodInputs');
-  if(reportPeriod==="দৈনিক"){
-    wrap.innerHTML = `<label>তারিখ</label><input id="rep_date" type="date" value="${reportDate}">`;
-    document.getElementById('rep_date').addEventListener('change', e=>{ reportDate=e.target.value; renderReportBody(); });
-  } else if(reportPeriod==="সাপ্তাহিক"){
-    wrap.innerHTML = `<label>সপ্তাহ শুরুর তারিখ</label><input id="rep_weekstart" type="date" value="${reportWeekStart}">`;
-    document.getElementById('rep_weekstart').addEventListener('change', e=>{ reportWeekStart=e.target.value; renderReportBody(); });
-  } else if(reportPeriod==="মাসিক"){
-    wrap.innerHTML = `<div class="row2">
-      <div><label>মাস</label><select id="rep_month">${MONTHS.map(m=>`<option ${m===reportMonthSel?'selected':''}>${m}</option>`).join("")}</select></div>
-      <div><label>বছর</label><select id="rep_monthyear">${years.map(y=>`<option ${y===reportYearForMonth?'selected':''}>${y}</option>`).join("")}</select></div>
-    </div>`;
-    document.getElementById('rep_month').addEventListener('change', e=>{ reportMonthSel=e.target.value; renderReportBody(); });
-    document.getElementById('rep_monthyear').addEventListener('change', e=>{ reportYearForMonth=Number(e.target.value); renderReportBody(); });
-  } else if(reportPeriod==="বাৎসরিক"){
-    wrap.innerHTML = `<label>বছর</label><select id="rep_year">${years.map(y=>`<option ${y===reportYearSel?'selected':''}>${y}</option>`).join("")}</select>`;
-    document.getElementById('rep_year').addEventListener('change', e=>{ reportYearSel=Number(e.target.value); renderReportBody(); });
-  } else {
-    wrap.innerHTML = `<div class="row2">
-      <div><label>থেকে</label><input id="rep_from" type="date" value="${reportCustomFrom}"></div>
-      <div><label>পর্যন্ত</label><input id="rep_to" type="date" value="${reportCustomTo}"></div>
-    </div>`;
-    document.getElementById('rep_from').addEventListener('change', e=>{ reportCustomFrom=e.target.value; renderReportBody(); });
-    document.getElementById('rep_to').addEventListener('change', e=>{ reportCustomTo=e.target.value; renderReportBody(); });
-  }
-}
-function renderReportBody(){
-  const wrap = document.getElementById('repBody');
-  const [start,end] = getReportRange();
-  const dates = datesInRange(start,end);
-  const periodLabel = fmtDate(start) + (start!==end?(" to "+fmtDate(end)):"");
-  const clsLabel = reportClassFilter==="সব" ? "All Classes" : reportClassFilter;
-  let body = "";
-  if(reportType==="সম্পূর্ণ") body = fullSummaryReportHtml(dates, periodLabel);
-  else if(reportType==="রেজাল্ট") body = resultReportHtml(dates, periodLabel, clsLabel);
-  else if(reportType==="উপস্থিতি") body = attendanceReportHtml(dates, periodLabel, clsLabel);
-  else if(reportType==="পেমেন্ট") body = paymentReportHtml(dates, periodLabel, clsLabel);
-  else if(reportType==="ভর্তি/অব্যাহতি") body = enrollmentReportHtml(dates, periodLabel, clsLabel);
-  wrap.innerHTML = `<div class="receipt" style="margin-top:12px">${body}</div>`;
-}
 
-function fullSummaryReportHtml(dates, periodLabel){
-  const pays = db.payments.filter(p=>dates.includes(p.date));
-  const income = pays.reduce((s,p)=>s+Number(p.amount||0),0);
-  const salExp = db.staffPayments.filter(p=>dates.includes(p.date)).reduce((s,p)=>s+Number(p.amount||0),0);
-  const otherExp = db.expenses.filter(e=>dates.includes(e.date)).reduce((s,e)=>s+Number(e.amount||0),0);
-  const totalExp = salExp+otherExp, profit = income-totalExp;
-  const attRows = db.attendance.filter(a=>dates.includes(a.date));
-  const classAttendance = CLASSES.map(c=>{
-    const studIds = new Set(db.students.filter(s=>s.class===c).map(s=>s.id));
-    const rows = attRows.filter(a=>studIds.has(a.studentId));
-    return {c, present:rows.filter(a=>a.status==="উপস্থিত").length, absent:rows.filter(a=>a.status==="অনুপস্থিত").length, leave:rows.filter(a=>a.status==="ছুটি").length, total:rows.length};
-  }).filter(x=>x.total>0);
-  const examRows = db.exams.filter(e=>dates.includes(e.date));
-  let bestResult = null;
-  examRows.forEach(e=>{ const pct=examPct(e); if(!bestResult||pct>bestResult.pct) bestResult={ex:e,pct}; });
-  const newAdm = db.students.filter(s=>s.admissionDate && dates.includes(s.admissionDate));
-  const left = db.students.filter(s=>s.status==="নিষ্ক্রিয়" && s.leftDate && dates.includes(s.leftDate));
-  return `
-    ${printHeaderHtml("Summary Report — " + periodLabel)}
-    <h3 class="sub-h">Income / Expense / Profit</h3>
-    <table style="width:100%">
-      <tr><td>Total Income</td><td style="text-align:right">${fmtMoney(income)}</td></tr>
-      <tr><td>Salary Expense</td><td style="text-align:right">${fmtMoney(salExp)}</td></tr>
-      <tr><td>Other Expense</td><td style="text-align:right">${fmtMoney(otherExp)}</td></tr>
-      <tr><td>Total Expense</td><td style="text-align:right">${fmtMoney(totalExp)}</td></tr>
-      <tr style="font-weight:bold"><td>Profit</td><td style="text-align:right;color:${profit>=0?'var(--accent)':'var(--danger)'}">${fmtMoney(profit)}</td></tr>
-    </table>
-    <h3 class="sub-h">Attendance by Class</h3>
-    ${classAttendance.length===0?'<div class="empty">No attendance records</div>':`<div class="table-wrap"><table>
-      <tr><th>Class</th><th>Present</th><th>Absent</th><th>Leave</th><th>Total</th></tr>
-      ${classAttendance.map(x=>`<tr><td>${x.c}</td><td style="text-align:right">${x.present}</td><td style="text-align:right">${x.absent}</td><td style="text-align:right">${x.leave}</td><td style="text-align:right">${x.total}</td></tr>`).join("")}
-    </table></div>`}
-    <h3 class="sub-h">Exams</h3>
-    <table style="width:100%"><tr><td>Total Exam Entries</td><td style="text-align:right">${examRows.length}</td></tr></table>
-    ${bestResult?`<div class="amount-box">Best Result: ${(getStudent(bestResult.ex.studentId)||{}).name||'-'} — ${bestResult.pct}%</div>`:''}
-    <h3 class="sub-h">Enrollment</h3>
-    <table style="width:100%">
-      <tr><td>New Admissions</td><td style="text-align:right">${newAdm.length}</td></tr>
-      <tr><td>Left / Dropped</td><td style="text-align:right">${left.length}</td></tr>
-      <tr style="font-weight:bold"><td>Net Change</td><td style="text-align:right">${newAdm.length-left.length}</td></tr>
-    </table>
-  `;
-}
-
-function resultReportHtml(dates, periodLabel, clsLabel){
-  const classes = reportClassScope();
-  const typeLabel = reportExamTypeFilter==="সব" ? "All Types" : (EXAM_TYPE_EN[reportExamTypeFilter]||reportExamTypeFilter);
-  let html = printHeaderHtml("Result Report — " + clsLabel + " — " + typeLabel + " — " + periodLabel);
-  classes.forEach(cls=>{
-    const students = db.students.filter(s=>s.class===cls);
-    const rows = students.map(s=>{
-      const exs = db.exams.filter(e=>e.studentId===s.id && dates.includes(e.date) && (reportExamTypeFilter==="সব"||e.type===reportExamTypeFilter));
-      const avgPct = exs.length ? Math.round(exs.reduce((sum,e)=>sum+examPct(e),0)/exs.length*10)/10 : null;
-      const attPct = studentAttendancePctInRange(s.id, dates);
-      return {s, avgPct, attPct, examCount:exs.length};
-    }).filter(r=>r.examCount>0 || r.attPct!==null)
-      .sort((a,b)=>(b.avgPct??-1)-(a.avgPct??-1));
-    if(rows.length===0) return;
-    const shown = reportDetail==="সংক্ষিপ্ত" ? rows.slice(0,3) : rows;
-    html += `<h3 class="sub-h">${cls}</h3>
-      <div class="table-wrap"><table>
-        <tr><th>Rank</th><th>Name</th><th>ID</th><th>Avg Exam %</th><th>Attendance %</th><th>Exams</th></tr>
-        ${shown.map((r,i)=>`<tr><td>${i+1}</td><td>${r.s.name}</td><td>${r.s.id}</td>
-          <td style="text-align:right">${r.avgPct===null?'-':r.avgPct+'%'}</td>
-          <td style="text-align:right">${r.attPct===null?'-':r.attPct+'%'}</td>
-          <td style="text-align:right">${r.examCount}</td></tr>`).join("")}
-      </table></div>`;
-  });
-  return html;
-}
-
-function attendanceReportHtml(dates, periodLabel, clsLabel){
-  const classes = reportClassScope();
-  let html = printHeaderHtml("Attendance Report — " + clsLabel + " — " + periodLabel);
-  const attRows = db.attendance.filter(a=>dates.includes(a.date));
-  classes.forEach(cls=>{
-    const studIds = new Set(db.students.filter(s=>s.class===cls).map(s=>s.id));
-    const rows = attRows.filter(a=>studIds.has(a.studentId));
-    if(rows.length===0) return;
-    const present = rows.filter(a=>a.status==="উপস্থিত").length;
-    const absent = rows.filter(a=>a.status==="অনুপস্থিত").length;
-    const leave = rows.filter(a=>a.status==="ছুটি").length;
-    html += `<h3 class="sub-h">${cls}</h3>
-      <table style="width:100%">
-        <tr><td>Present</td><td style="text-align:right">${present}</td></tr>
-        <tr><td>Absent</td><td style="text-align:right">${absent}</td></tr>
-        <tr><td>Leave</td><td style="text-align:right">${leave}</td></tr>
-        <tr style="font-weight:bold"><td>Total Marked</td><td style="text-align:right">${rows.length}</td></tr>
-      </table>`;
-    if(reportDetail==="বিস্তারিত"){
-      const absentRows = rows.filter(a=>a.status!=="উপস্থিত");
-      if(absentRows.length===0){
-        html += `<div class="empty">No absences 🎉</div>`;
-      } else {
-        html += `<div class="table-wrap"><table>
-          <tr><th>Name</th><th>Date</th><th>Status</th><th>Student Phone</th><th>Guardian</th><th>Guardian Phone</th></tr>
-          ${absentRows.map(a=>{
-            const s = getStudent(a.studentId)||{};
-            return `<tr><td>${s.name||'-'}</td><td>${fmtDate(a.date)}</td><td>${a.status}</td><td>${s.phone||'-'}</td><td>${s.guardian||'-'}</td><td>${s.whatsapp||s.phone||'-'}</td></tr>`;
-          }).join("")}
-        </table></div>`;
-      }
+  const studentSummaryMap = {};
+  classExams.forEach(e=>{
+    if(!studentSummaryMap[e.studentId]){
+      studentSummaryMap[e.studentId] = { studentId: e.studentId, totalObtained: 0, totalFull: 0 };
     }
+    studentSummaryMap[e.studentId].totalObtained += examTotal(e);
+    studentSummaryMap[e.studentId].totalFull += examFull(e);
   });
-  return html;
+
+  const rankList = Object.values(studentSummaryMap).map(x=>{
+    const s = getStudent(x.studentId);
+    const pct = x.totalFull > 0 ? (x.totalObtained / x.totalFull) * 100 : 0;
+    return { ...x, studentName: s ? s.name : 'অজানা', pct, grade: gradeFromPct(pct) };
+  }).sort((a,b)=>b.totalObtained - a.totalObtained);
+
+  app.innerHTML = `
+    <div class="no-print" style="margin-bottom:12px;display:flex;gap:8px">
+      <button class="btn secondary" onclick="showTab('exams')">← ফিরে যান</button>
+      <button class="btn" onclick="window.print()">🖨️ মেধা তালিকা প্রিন্ট করুন</button>
+    </div>
+    <div class="card receipt">
+      ${printHeaderHtml(`মেধা তালিকা - ${examClass} (${examType})`)}
+      ${rankList.length===0 ? '<div class="empty">কোনো পরীক্ষার ডাটা পাওয়া যায়নি</div>' : `
+      <div class="table-wrap">
+        <table>
+          <tr><th>মেধাক্রম</th><th>আইডি</th><th>নাম</th><th>প্রাপ্ত নম্বর</th><th>শতাংশ</th><th>গ্রেড</th></tr>
+          ${rankList.map((r, idx)=>`
+            <tr>
+              <td><b>#${idx+1}</b></td>
+              <td>${r.studentId}</td>
+              <td>${r.studentName}</td>
+              <td><b>${r.totalObtained}</b> / ${r.totalFull}</td>
+              <td>${Math.round(r.pct)}%</td>
+              <td><span class="pill ${r.pct>=40?'ok':'bad'}">${r.grade}</span></td>
+            </tr>
+          `).join("")}
+        </table>
+      </div>`}
+      <div class="sign-row">
+        <div>প্রস্তুতকারীর স্বাক্ষর</div>
+        <div>পরিচালকের স্বাক্ষর</div>
+      </div>
+    </div>
+  `;
 }
 
-function paymentReportHtml(dates, periodLabel, clsLabel){
-  const classes = reportClassScope();
-  const classSet = new Set(classes);
-  const pays = db.payments.filter(p=>{
-    const s=getStudent(p.studentId); return s && classSet.has(s.class) && dates.includes(p.date);
-  });
-  const income = pays.reduce((s,p)=>s+Number(p.amount||0),0);
-  const paidIds = new Set(pays.map(p=>p.studentId));
-  const scope = db.students.filter(s=>classSet.has(s.class) && s.status!=="নিষ্ক্রিয়");
-  const notPaid = scope.filter(s=>!paidIds.has(s.id));
-  const salPays = db.staffPayments.filter(p=>dates.includes(p.date));
-  const salExp = salPays.reduce((s,p)=>s+Number(p.amount||0),0);
-  const otherExpRows = db.expenses.filter(e=>dates.includes(e.date));
-  const otherExp = otherExpRows.reduce((s,e)=>s+Number(e.amount||0),0);
-  const totalExp = salExp+otherExp;
-  const profit = income-totalExp;
-  let html = `${printHeaderHtml("Payment Report — " + clsLabel + " — " + periodLabel)}
-    <h3 class="sub-h">Income</h3>
-    <table style="width:100%">
-      <tr><td>Total Collected</td><td style="text-align:right">${fmtMoney(income)}</td></tr>
-      <tr><td>Students Paid</td><td style="text-align:right">${paidIds.size}</td></tr>
-      <tr><td>Students Not Paid (in this period)</td><td style="text-align:right">${notPaid.length}</td></tr>
-    </table>
-    <h3 class="sub-h">Expense</h3>
-    <table style="width:100%">
-      <tr><td>Salary Expense</td><td style="text-align:right">${fmtMoney(salExp)}</td></tr>
-      <tr><td>Other Expense</td><td style="text-align:right">${fmtMoney(otherExp)}</td></tr>
-      <tr style="font-weight:bold"><td>Total Expense</td><td style="text-align:right">${fmtMoney(totalExp)}</td></tr>
-    </table>
-    <div class="amount-box" style="color:${profit>=0?'var(--accent)':'var(--danger)'}">Net Profit: ${fmtMoney(profit)}</div>`;
-  if(reportDetail==="বিস্তারিত"){
-    html += `<h3 class="sub-h">Paid</h3>`;
-    html += pays.length===0 ? `<div class="empty">No payments</div>` : `<div class="table-wrap"><table>
-      <tr><th>Name</th><th>Class</th><th>Date</th><th>Amount</th><th>Method</th></tr>
-      ${pays.map(p=>{ const s=getStudent(p.studentId)||{}; return `<tr><td>${s.name||'-'}</td><td>${s.class||'-'}</td><td>${fmtDate(p.date)}</td><td style="text-align:right">${fmtMoney(p.amount)}</td><td>${p.method}</td></tr>`; }).join("")}
-    </table></div>`;
-    html += `<h3 class="sub-h">Not Paid</h3>`;
-    html += notPaid.length===0 ? `<div class="empty">Everyone has paid 🎉</div>` : `<div class="table-wrap"><table>
-      <tr><th>Name</th><th>Class</th><th>Guardian</th><th>Phone</th></tr>
-      ${notPaid.map(s=>`<tr><td>${s.name}</td><td>${s.class}</td><td>${s.guardian||'-'}</td><td>${s.phone||'-'}</td></tr>`).join("")}
-    </table></div>`;
-    html += `<h3 class="sub-h">Salary Payments</h3>`;
-    html += salPays.length===0 ? `<div class="empty">None</div>` : `<div class="table-wrap"><table>
-      <tr><th>Staff</th><th>Date</th><th>Amount</th></tr>
-      ${salPays.map(p=>{ const st=db.staff.find(x=>x.id===p.staffId)||{}; return `<tr><td>${st.name||'-'}</td><td>${fmtDate(p.date)}</td><td style="text-align:right">${fmtMoney(p.amount)}</td></tr>`; }).join("")}
-    </table></div>`;
-    html += `<h3 class="sub-h">Other Expenses</h3>`;
-    html += otherExpRows.length===0 ? `<div class="empty">None</div>` : `<div class="table-wrap"><table>
-      <tr><th>Category</th><th>Description</th><th>Date</th><th>Amount</th></tr>
-      ${otherExpRows.map(e=>`<tr><td>${e.category}</td><td>${e.description||'-'}</td><td>${fmtDate(e.date)}</td><td style="text-align:right">${fmtMoney(e.amount)}</td></tr>`).join("")}
-    </table></div>`;
-  }
-  return html;
-}
-
-function enrollmentReportHtml(dates, periodLabel, clsLabel){
-  const classes = reportClassScope();
-  const classSet = new Set(classes);
-  const newAdm = db.students.filter(s=>classSet.has(s.class) && s.admissionDate && dates.includes(s.admissionDate));
-  const left = db.students.filter(s=>classSet.has(s.class) && s.status==="নিষ্ক্রিয়" && s.leftDate && dates.includes(s.leftDate));
-  let html = `${printHeaderHtml("Enrollment Report — " + clsLabel + " — " + periodLabel)}
-    <table style="width:100%">
-      <tr><td>New Admissions</td><td style="text-align:right">${newAdm.length}</td></tr>
-      <tr><td>Left / Dropped</td><td style="text-align:right">${left.length}</td></tr>
-      <tr style="font-weight:bold"><td>Net Change</td><td style="text-align:right">${newAdm.length-left.length}</td></tr>
-    </table>`;
-  if(reportDetail==="বিস্তারিত"){
-    html += `<h3 class="sub-h">New Admissions</h3>`;
-    html += newAdm.length===0 ? `<div class="empty">None</div>` : `<div class="table-wrap"><table>
-      <tr><th>Name</th><th>ID</th><th>Class</th><th>Admission Date</th><th>Guardian</th><th>Phone</th></tr>
-      ${newAdm.map(s=>`<tr><td>${s.name}</td><td>${s.id}</td><td>${s.class}</td><td>${fmtDate(s.admissionDate)}</td><td>${s.guardian||'-'}</td><td>${s.phone||'-'}</td></tr>`).join("")}
-    </table></div>`;
-    html += `<h3 class="sub-h">Left / Dropped</h3>`;
-    html += left.length===0 ? `<div class="empty">None</div>` : `<div class="table-wrap"><table>
-      <tr><th>Name</th><th>ID</th><th>Class</th><th>Left Date</th><th>Guardian</th><th>Phone</th></tr>
-      ${left.map(s=>`<tr><td>${s.name}</td><td>${s.id}</td><td>${s.class}</td><td>${fmtDate(s.leftDate)}</td><td>${s.guardian||'-'}</td><td>${s.phone||'-'}</td></tr>`).join("")}
-    </table></div>`;
-  }
-  return html;
-}
-
-
-/* ================== STAFF ================== */
+/* ================== STAFF & SALARY ================== */
 function renderStaff(){
   const app = document.getElementById('app');
   app.innerHTML = `
     <div class="card">
       <h2>নতুন স্টাফ যোগ করুন</h2>
       <form id="staffForm">
-        <label>নাম</label><input id="s_name" required>
+        <label>নাম</label><input id="stf_name" required>
         <div class="row2">
-          <div><label>পদবি</label><input id="s_pos" placeholder="যেমন: শিক্ষক (গণিত)"></div>
-          <div><label>মাসিক বেতন (৳)</label><input id="s_sal" type="number" required></div>
+          <div><label>পদবি</label><input id="stf_role" placeholder="যেমন: শিক্ষক / সহকারী"></div>
+          <div><label>মাসিক বেতন (৳)</label><input id="stf_salary" type="number" required></div>
         </div>
-        <button type="submit" class="btn">যোগ করুন</button>
+        <div class="row2">
+          <div><label>মোবাইল নম্বর</label><input id="stf_phone"></div>
+          <div><label>যোগদানের তারিখ</label><input id="stf_date" type="date" value="${todayStr()}"></div>
+        </div>
+        <button type="submit" class="btn">স্টাফ সংরক্ষণ করুন</button>
       </form>
     </div>
+
     <div class="card">
-      <h2>স্টাফ তালিকা</h2>
-      <div class="table-wrap">
-        ${db.staff.length===0?'<div class="empty">কোনো স্টাফ নেই</div>':`<table><tr><th>নাম</th><th>পদবি</th><th>বেতন</th></tr>
-        ${db.staff.map(st=>`<tr><td>${st.name}</td><td>${st.position}</td><td>${fmtMoney(st.salary)}</td></tr>`).join("")}
-        </table>`}
-      </div>
-    </div>
-    <div class="card">
-      <h2>মাসিক বেতন প্রদান</h2>
-      <form id="staffPayForm">
-        <label>স্টাফ</label>
-        <select id="sp_staff" required><option value="">-- নির্বাচন করুন --</option>
-          ${db.staff.map(st=>`<option value="${st.id}" data-sal="${st.salary}">${st.name} (${st.position})</option>`).join("")}
-        </select>
+      <h2>বেতন প্রদান করুন</h2>
+      <form id="stfPayForm">
         <div class="row2">
-          <div><label>মাস</label><select id="sp_month">${MONTHS.map(m=>`<option ${m===monthNameFromDate(todayStr())?'selected':''}>${m}</option>`).join("")}</select></div>
-          <div><label>প্রদানের তারিখ</label><input id="sp_date" type="date" value="${todayStr()}"></div>
+          <div><label>স্টাফ নির্বাচন</label><select id="sp_staff">${db.staff.map(s=>`<option value="${s.id}">${s.name} (${s.role||'স্টাফ'})</option>`).join("")}</select></div>
+          <div><label>কোন মাসের বেতন</label><select id="sp_month">${MONTHS.map(m=>`<option ${m===MONTHS[new Date().getMonth()]?'selected':''}>${m}</option>`).join("")}</select></div>
         </div>
-        <label>পরিমাণ (৳)</label><input id="sp_amount" type="number">
-        <button type="submit" class="btn">বেতন প্রদান রেকর্ড করুন</button>
+        <div class="row2">
+          <div><label>পরিমাণ (৳)</label><input id="sp_amount" type="number" required></div>
+          <div><label>তারিখ</label><input id="sp_date" type="date" value="${todayStr()}"></div>
+        </div>
+        <button type="submit" class="btn">বেতন জমা দিন</button>
       </form>
-      <div class="divider"></div>
-      <div class="table-wrap">${staffPaymentsTableHtml()}</div>
+    </div>
+
+    <div class="card">
+      <h2>স্টাফ ও বেতন তালিকা</h2>
+      <div class="table-wrap" id="staffTableWrap"></div>
     </div>
   `;
+
   document.getElementById('staffForm').addEventListener('submit', e=>{
     e.preventDefault();
-    db.meta.staffSeq++;
-    db.staff.push({
-      id: "STF-"+pad(db.meta.staffSeq,3),
-      name: document.getElementById('s_name').value.trim(),
-      position: document.getElementById('s_pos').value.trim(),
-      salary: Number(document.getElementById('s_sal').value||0)
-    });
-    save(); toast("স্টাফ যোগ হয়েছে"); renderStaff();
+    db.meta.staffSeq = (db.meta.staffSeq||0)+1;
+    const stf = {
+      id: `STF-${pad(db.meta.staffSeq,3)}`,
+      name: document.getElementById('stf_name').value.trim(),
+      role: document.getElementById('stf_role').value.trim(),
+      salary: Number(document.getElementById('stf_salary').value||0),
+      phone: document.getElementById('stf_phone').value.trim(),
+      joinDate: document.getElementById('stf_date').value
+    };
+    db.staff.push(stf);
+    save();
+    toast("নতুন স্টাফ যোগ হয়েছে");
+    renderStaff();
   });
-  const spStaffSel = document.getElementById('sp_staff');
-  spStaffSel.addEventListener('change', ()=>{
-    const opt = spStaffSel.selectedOptions[0];
-    document.getElementById('sp_amount').value = opt ? (opt.dataset.sal||0) : 0;
-  });
-  document.getElementById('staffPayForm').addEventListener('submit', e=>{
+
+  document.getElementById('stfPayForm').addEventListener('submit', e=>{
     e.preventDefault();
-    const stid = document.getElementById('sp_staff').value;
-    if(!stid){ toast("স্টাফ নির্বাচন করুন"); return; }
-    const dateVal = document.getElementById('sp_date').value || todayStr();
-    const day = new Date(dateVal).getDate();
+    const stfId = document.getElementById('sp_staff').value;
+    if(!stfId){ toast("স্টাফ নির্বাচন করুন"); return; }
+
     db.staffPayments.push({
-      staffId: stid,
+      id: `SPAY-${Date.now()}`,
+      staffId: stfId,
       month: document.getElementById('sp_month').value,
-      date: dateVal,
       amount: Number(document.getElementById('sp_amount').value||0),
-      status: day<=15 ? "সময়মত পরিশোধিত" : "বিলম্বে পরিশোধিত"
+      date: document.getElementById('sp_date').value
     });
-    save(); toast("বেতন প্রদান রেকর্ড হয়েছে"); renderStaff();
+    save();
+    toast("বেতন প্রদান লিপিবদ্ধ হয়েছে");
+    renderStaff();
   });
+
+  renderStaffTable();
 }
-function staffPaymentsTableHtml(){
-  const list = [...db.staffPayments].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,30);
-  if(list.length===0) return `<div class="empty">কোনো বেতন প্রদান রেকর্ড নেই</div>`;
-  return `<table><tr><th>নাম</th><th>মাস</th><th>পরিমাণ</th><th>অবস্থা</th></tr>
-    ${list.map(p=>{
-      const st = db.staff.find(x=>x.id===p.staffId);
-      const cls = p.status==="সময়মত পরিশোধিত"?"ok":"warn";
-      return `<tr><td>${st?st.name:'-'}</td><td>${p.month}</td><td>${fmtMoney(p.amount)}</td><td><span class="pill ${cls}">${p.status}</span></td></tr>`;
+
+function renderStaffTable(){
+  const wrap = document.getElementById('staffTableWrap');
+  if(db.staff.length===0){ wrap.innerHTML = `<div class="empty">কোনো স্টাফের তথ্য নেই</div>`; return; }
+
+  wrap.innerHTML = `<table>
+    <tr><th>নাম</th><th>পদবি</th><th>মূল বেতন</th><th>সর্বশেষ প্রদত্ত বেতন</th></tr>
+    ${db.staff.map(s=>{
+      const pays = db.staffPayments.filter(p=>p.staffId===s.id).sort((a,b)=>new Date(b.date)-new Date(a.date));
+      const last = pays[0];
+      return `<tr>
+        <td><b>${s.name}</b> <br><small style="color:var(--muted)">${s.phone||''}</small></td>
+        <td>${s.role||'-'}</td>
+        <td>${fmtMoney(s.salary)}</td>
+        <td>${last ? `${fmtMoney(last.amount)} (${last.month})` : '-'}</td>
+      </tr>`;
     }).join("")}
   </table>`;
 }
@@ -1639,264 +578,260 @@ function renderExpenses(){
   const app = document.getElementById('app');
   app.innerHTML = `
     <div class="card">
-      <h2>নতুন ব্যয় যোগ করুন</h2>
+      <h2>অন্যান্য খরচ যুক্ত করুন</h2>
       <form id="expForm">
         <div class="row2">
-          <div><label>মাস</label><select id="x_month">${MONTHS.map(m=>`<option ${m===monthNameFromDate(todayStr())?'selected':''}>${m}</option>`).join("")}</select></div>
-          <div><label>তারিখ</label><input id="x_date" type="date" value="${todayStr()}"></div>
+          <div><label>খাতের নাম (ক্যাটাগরি)</label><select id="exp_cat">${db.settings.expCats.map(c=>`<option>${c}</option>`).join("")}</select></div>
+          <div><label>পরিমাণ (৳)</label><input id="exp_amount" type="number" required></div>
         </div>
-        <label>ব্যয়ের খাত</label><select id="x_cat">${db.settings.expCats.map(c=>`<option>${c}</option>`).join("")}</select>
-        <label>বিবরণ</label><input id="x_desc">
-        <label>পরিমাণ (৳)</label><input id="x_amount" type="number" required>
-        <button type="submit" class="btn">সংরক্ষণ করুন</button>
+        <div class="row2">
+          <div><label>কোন মাসের খরচ</label><select id="exp_month">${MONTHS.map(m=>`<option ${m===MONTHS[new Date().getMonth()]?'selected':''}>${m}</option>`).join("")}</select></div>
+          <div><label>তারিখ</label><input id="exp_date" type="date" value="${todayStr()}"></div>
+        </div>
+        <label>বিবরণ / নোট</label><input id="exp_note" placeholder="যেমন: মে মাসের কারেন্ট বিল">
+        <button type="submit" class="btn">খরচ বিবরণ সেভ করুন</button>
       </form>
     </div>
+
     <div class="card">
-      <h2>ব্যয়ের তালিকা</h2>
-      <div class="table-wrap">${expensesTableHtml()}</div>
+      <h2>সাম্প্রতিক ব্যয়ের তালিকা</h2>
+      <div class="table-wrap" id="expTableWrap"></div>
     </div>
   `;
+
   document.getElementById('expForm').addEventListener('submit', e=>{
     e.preventDefault();
-    db.meta.expenseSeq++;
+    db.meta.expenseSeq = (db.meta.expenseSeq||0)+1;
     db.expenses.push({
-      id: "EXP-"+pad(db.meta.expenseSeq,4),
-      month: document.getElementById('x_month').value,
-      date: document.getElementById('x_date').value || todayStr(),
-      category: document.getElementById('x_cat').value,
-      description: document.getElementById('x_desc').value.trim(),
-      amount: Number(document.getElementById('x_amount').value||0)
+      id: `EXP-${pad(db.meta.expenseSeq,4)}`,
+      category: document.getElementById('exp_cat').value,
+      amount: Number(document.getElementById('exp_amount').value||0),
+      month: document.getElementById('exp_month').value,
+      date: document.getElementById('exp_date').value,
+      note: document.getElementById('exp_note').value.trim()
     });
-    save(); toast("ব্যয় সংরক্ষণ হয়েছে"); renderExpenses();
+    save();
+    toast("খরচের হিসাব লিপিবদ্ধ হয়েছে");
+    renderExpenses();
   });
+
+  renderExpenseTable();
 }
-function expensesTableHtml(){
-  const list = [...db.expenses].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,30);
-  if(list.length===0) return `<div class="empty">কোনো ব্যয় নেই</div>`;
-  return `<table><tr><th>মাস</th><th>খাত</th><th>বিবরণ</th><th>পরিমাণ</th></tr>
-    ${list.map(x=>`<tr><td>${x.month}</td><td>${x.category}</td><td>${x.description||'-'}</td><td>${fmtMoney(x.amount)}</td></tr>`).join("")}
+
+function renderExpenseTable(){
+  const wrap = document.getElementById('expTableWrap');
+  const list = [...db.expenses].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  if(list.length===0){ wrap.innerHTML = `<div class="empty">কোনো খরচের তথ্য পাওয়া যায়নি</div>`; return; }
+
+  wrap.innerHTML = `<table>
+    <tr><th>খাত</th><th>বিবরণ</th><th>পরিমাণ</th><th>তারিখ</th></tr>
+    ${list.map(e=>`
+      <tr>
+        <td><b>${e.category}</b></td>
+        <td>${e.note||'-'} <br><small style="color:var(--muted)">মাস: ${e.month}</small></td>
+        <td style="color:var(--danger);font-weight:bold">${fmtMoney(e.amount)}</td>
+        <td>${fmtDate(e.date)}</td>
+      </tr>
+    `).join("")}
   </table>`;
 }
 
-/* ================== SUMMARY ================== */
-let summaryYear = new Date().getFullYear();
-function renderSummary(){
+/* ================== REPORTS & SUMMARY ================== */
+function renderReports(){
   const app = document.getElementById('app');
-  const years = getYearsList();
+  const now = new Date();
+  const curYr = now.getFullYear();
+
   app.innerHTML = `
     <div class="card">
-      <h2>মাসিক আয়-ব্যয়-মুনাফা সারসংক্ষেপ</h2>
-      <label>বছর</label>
-      <select id="sumYear">${years.map(y=>`<option ${y===summaryYear?'selected':''}>${y}</option>`).join("")}</select>
-      <div id="sumTableWrap"></div>
-      <button class="btn no-print" onclick="window.print()">🖨️ বাৎসরিক রিপোর্ট প্রিন্ট করুন</button>
+      <h2>শ্রেণীভিত্তিক শিক্ষার্থী ও বকেয়া হিসাব</h2>
+      <div class="table-wrap">
+        <table>
+          <tr><th>শ্রেণী</th><th>মোট স্টুডেন্ট</th><th>নির্ধারিত ফি</th><th>মোট বকেয়া</th></tr>
+          ${CLASSES.map(c=>{
+            const stus = activeStudents(c);
+            const due = stus.reduce((s,st)=>s+Math.max(0,studentDue(st)),0);
+            return `<tr>
+              <td><b>${c}</b></td>
+              <td>${stus.length} জন</td>
+              <td>${fmtMoney(db.classFees[c]||0)}</td>
+              <td style="color:${due>0?'var(--danger)':'var(--accent)'}">${fmtMoney(due)}</td>
+            </tr>`;
+          }).join("")}
+        </table>
+      </div>
     </div>
   `;
-  document.getElementById('sumYear').addEventListener('change', e=>{ summaryYear = Number(e.target.value); renderSummaryTable(); });
-  renderSummaryTable();
 }
-function renderSummaryTable(){
-  const wrap = document.getElementById('sumTableWrap');
-  let totalIncome=0, totalSal=0, totalOther=0;
-  const rows = MONTHS.map((m,i)=>{
-    const inc = monthlyIncome(m, summaryYear), sal = monthlySalaryExpense(m, summaryYear), oth = monthlyOtherExpense(m, summaryYear);
-    totalIncome+=inc; totalSal+=sal; totalOther+=oth;
-    const exp = sal+oth, profit = inc-exp;
-    return `<tr><td>${m}</td><td>${fmtMoney(inc)}</td><td>${fmtMoney(sal)}</td><td>${fmtMoney(oth)}</td><td>${fmtMoney(exp)}</td>
-      <td style="color:${profit>=0?'var(--accent)':'var(--danger)'}">${fmtMoney(profit)}</td></tr>`;
-  }).join("");
-  const totalExp = totalSal+totalOther, totalProfit = totalIncome-totalExp;
-  wrap.innerHTML = `
-    <div class="receipt" style="margin-top:10px">
-      ${printHeaderHtml("Annual Income &amp; Expense Report — " + summaryYear)}
-      <div class="table-wrap"><table>
-        <tr><th>Month</th><th>Income</th><th>Salary Expense</th><th>Other Expense</th><th>Total Expense</th><th>Profit</th></tr>
-        ${rows}
-        <tr style="font-weight:bold;background:#f0f3f7"><td>Total</td><td>${fmtMoney(totalIncome)}</td><td>${fmtMoney(totalSal)}</td><td>${fmtMoney(totalOther)}</td><td>${fmtMoney(totalExp)}</td><td>${fmtMoney(totalProfit)}</td></tr>
-      </table></div>
+
+function renderSummary(){
+  const app = document.getElementById('app');
+  const curYr = new Date().getFullYear();
+
+  const totalIncome = db.payments.reduce((s,p)=>s+Number(p.amount||0),0);
+  const totalSal = db.staffPayments.reduce((s,p)=>s+Number(p.amount||0),0);
+  const totalExp = db.expenses.reduce((s,e)=>s+Number(e.amount||0),0);
+  const totalNet = totalIncome - totalSal - totalExp;
+
+  app.innerHTML = `
+    <div class="card">
+      <h2>সর্বমোট আর্থিক সারসংক্ষেপ</h2>
+      <div class="kpi-grid" style="margin-bottom:12px">
+        <div class="kpi"><div class="val">${fmtMoney(totalIncome)}</div><div class="lbl">সর্বমোট আদায়কৃত আয়</div></div>
+        <div class="kpi"><div class="val">${fmtMoney(totalSal+totalExp)}</div><div class="lbl">সর্বমোট ব্যয় (বেতন+অন্যান্য)</div></div>
+        <div class="kpi profit" style="grid-column: span 2"><div class="val">${fmtMoney(totalNet)}</div><div class="lbl">সর্বমোট নিট লাভ</div></div>
+      </div>
     </div>
   `;
+}
+
+/* ================== SEARCH ================== */
+function renderSearch(){
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="card">
+      <h2>🔍 স্টুডেন্ট ও রিসিট খুঁজুন</h2>
+      <input id="globalSearchInp" placeholder="আইডি, নাম, মোবাইল বা রিসিট নম্বর লিখুন..." autofocus>
+      <div id="searchResults" style="margin-top:12px"></div>
+    </div>
+  `;
+
+  document.getElementById('globalSearchInp').addEventListener('input', e=>{
+    const q = e.target.value.trim().toLowerCase();
+    const resWrap = document.getElementById('searchResults');
+    if(!q){ resWrap.innerHTML = ''; return; }
+
+    const stus = db.students.filter(s=>s.id.toLowerCase().includes(q) || s.name.toLowerCase().includes(q) || (s.phone&&s.phone.includes(q)));
+    const pays = db.payments.filter(p=>p.id.toLowerCase().includes(q));
+
+    let html = '';
+    if(stus.length){
+      html += `<h3>স্টুডেন্ট তালিকা (${stus.length})</h3><div class="table-wrap"><table>`;
+      stus.forEach(s=>{
+        html += `<tr><td>${s.id}</td><td>${s.name} (${s.class})</td><td><button class="btn small secondary" onclick="openProfile('${s.id}','search')">প্রোফাইল</button></td></tr>`;
+      });
+      html += `</table></div>`;
+    }
+
+    if(pays.length){
+      html += `<h3 style="margin-top:12px">পেমেন্ট রিসিট (${pays.length})</h3><div class="table-wrap"><table>`;
+      pays.forEach(p=>{
+        html += `<tr><td>${p.id}</td><td>${p.forMonth} - ${fmtMoney(p.amount)}</td><td><button class="btn small secondary" onclick="openReceipt('${p.id}')">রিসিট</button></td></tr>`;
+      });
+      html += `</table></div>`;
+    }
+
+    if(!stus.length && !pays.length){
+      html = `<div class="empty">কোনো ফলাফল পাওয়া যায়নি</div>`;
+    }
+
+    resWrap.innerHTML = html;
+  });
 }
 
 /* ================== SETTINGS ================== */
 function renderSettings(){
   const app = document.getElementById('app');
-  const m = db.meta;
   app.innerHTML = `
     <div class="card">
-      <h2>কোচিং সেন্টারের তথ্য (প্রিন্টে দেখাবে)</h2>
-      <label>নাম</label><input id="set_name" value="${m.instituteName}">
-      <label>ফোন নম্বর</label><input id="set_phone" value="${m.institutePhone||''}">
-      <label>ঠিকানা</label><input id="set_addr" value="${m.instituteAddress||''}">
-      <label>লোগো</label>
-      <input type="file" id="set_logo" accept="image/*">
-      ${m.logoDataUrl?`<div style="margin-top:8px"><img src="${m.logoDataUrl}" style="height:60px;border-radius:8px"><button class="btn secondary small" id="rmLogoBtn" style="margin-left:10px">লোগো মুছুন</button></div>`:""}
-      <button class="btn" id="saveInfoBtn">সংরক্ষণ করুন</button>
+      <h2>প্রতিষ্ঠানের তথ্য</h2>
+      <form id="instForm">
+        <label>প্রতিষ্ঠানের নাম</label><input id="st_name" value="${db.meta.instituteName||''}">
+        <label>ঠিকানা</label><input id="st_addr" value="${db.meta.instituteAddress||''}">
+        <label>ফোন নম্বর</label><input id="st_phone" value="${db.meta.institutePhone||''}">
+        <button type="submit" class="btn">তথ্য সেভ করুন</button>
+      </form>
     </div>
+
     <div class="card">
-      <h2>শ্রেণী অনুযায়ী ডিফল্ট মাসিক ফি</h2>
-      ${CLASSES.map(c=>`<div class="row2" style="align-items:center">
-        <div>${c}</div><input type="number" class="classFeeInput" data-class="${c}" value="${db.classFees[c]}">
-      </div>`).join("")}
-      <button class="btn" id="saveFeeBtn">ফি সংরক্ষণ করুন</button>
+      <h2>শ্রেণীভিত্তিক মাসিক ফি</h2>
+      <form id="feeForm">
+        ${CLASSES.map(c=>`
+          <div class="row2" style="margin-bottom:6px">
+            <div><label>${c}</label></div>
+            <div><input type="number" id="fee_${c}" value="${db.classFees[c]||800}"></div>
+          </div>
+        `).join("")}
+        <button type="submit" class="btn">ফি আপডেট করুন</button>
+      </form>
     </div>
+
     <div class="card">
-      <h2>নিজে কাস্টমাইজ করুন</h2>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 6px">এই তালিকাগুলো আপনি নিজেই বাড়াতে/কমাতে পারবেন — কোনো কোডিং লাগবে না।</p>
-      <h3 class="sub-h">পেমেন্ট মাধ্যম</h3>
-      <div class="tag-row" id="listPayMethods"></div>
-      <div class="row2"><input id="newPayMethod" placeholder="যেমন: শিওরক্যাশ"><button class="btn secondary" id="addPayMethodBtn" style="margin-top:0">+ যোগ করুন</button></div>
-      <h3 class="sub-h">ব্যয়ের খাত</h3>
-      <div class="tag-row" id="listExpCats"></div>
-      <div class="row2"><input id="newExpCat" placeholder="যেমন: পরিবহন খরচ"><button class="btn secondary" id="addExpCatBtn" style="margin-top:0">+ যোগ করুন</button></div>
-      <h3 class="sub-h">পরীক্ষার ধরন</h3>
-      <div class="tag-row" id="listExamTypes"></div>
-      <div class="row2"><input id="newExamType" placeholder="যেমন: টার্ম ফাইনাল"><button class="btn secondary" id="addExamTypeBtn" style="margin-top:0">+ যোগ করুন</button></div>
-      <p style="font-size:12px;color:var(--muted);margin:6px 0 0">নতুন ধরন যোগ করলে শুরুতে ৩টি সাধারণ বিষয় (পূর্ণমান ১০০) থাকবে। পরীক্ষা ফর্মে গিয়ে বিষয়/পূর্ণমান বদলে "ডিফল্ট হিসেবে সংরক্ষণ করুন" চাপলেই ভবিষ্যতের জন্য সেভ হয়ে যাবে।</p>
+      <h2>☁️ ফায়ারবেস ক্লাউড লাইভ সিঙ্ক</h2>
+      <form id="fbForm">
+        <label>Firebase Realtime Database URL</label>
+        <input id="fb_url" placeholder="https://your-app-default-rtdb.firebaseio.com" value="${db.meta.firebaseUrl||''}">
+        <label>Database Node Path</label>
+        <input id="fb_path" placeholder="coaching_data" value="${db.meta.firebasePath||'coaching_data'}">
+        <button type="submit" class="btn">লাইভ সিঙ্ক চালু করুন</button>
+      </form>
     </div>
+
     <div class="card">
-      <h2>লাইভ সিঙ্ক ও একাধিক ডিভাইস <span id="syncIndicator" style="font-size:11px;font-weight:normal;color:var(--muted)"></span></h2>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 6px">
-        একবার সেটআপ করলে এক ডিভাইসে কিছু সেভ করলে অন্য ডিভাইসে ~১৫ সেকেন্ডের মধ্যে আপনা-আপনি দেখা যাবে। দুই ডিভাইসে ঠিক একই মুহূর্তে এন্ট্রি দিলে যেটা শেষে সেভ হবে সেটাই থাকবে।
-      </p>
-      <label>Firebase Database URL</label>
-      <input id="fb_url" value="${m.firebaseUrl||''}" placeholder="https://your-project-default-rtdb.firebaseio.com">
-      <label>গোপন পাথ (এলোমেলো শব্দ, কাউকে শেয়ার করবেন না)</label>
-      <input id="fb_path" value="${m.firebasePath||'coaching_data'}">
-      <button class="btn" id="saveFbBtn">সংরক্ষণ করুন ও সিঙ্ক চালু করুন</button>
-      <button class="btn secondary" id="forceSyncBtn" style="margin-top:8px">🔄 এখনই সিঙ্ক করুন</button>
-      <p id="fbStatus" style="font-size:12px;color:var(--muted);margin-top:8px"></p>
-    </div>
-    <div class="card">
-      <h2>ডেটা ব্যাকআপ</h2>
-      ${db.meta.lastBackupDate?`<p style="font-size:12px;color:var(--muted)">সর্বশেষ ব্যাকআপ: ${fmtDate(db.meta.lastBackupDate)}</p>`:`<p style="font-size:12px;color:var(--danger)">এখনো কোনো ব্যাকআপ নেওয়া হয়নি</p>`}
-      <button class="btn secondary" id="exportBtn">⬇ ব্যাকআপ ডাউনলোড করুন (JSON)</button>
-      <label style="margin-top:14px">ব্যাকআপ ফাইল থেকে পুনরুদ্ধার করুন</label>
-      <input type="file" id="importFile" accept="application/json">
-    </div>
-    <div class="card">
-      <h2 style="color:var(--danger)">বিপজ্জনক এলাকা</h2>
-      <button class="btn danger" id="resetBtn">সব ডেটা মুছে ফেলুন</button>
+      <h2>💾 ডাটা ব্যাকআপ ও রিস্টোর</h2>
+      <button class="btn secondary" onclick="exportData()">ব্যাকআপ ডাউনলোড করুন (JSON)</button>
+      <div style="margin-top:10px">
+        <label>ব্যাকআপ ফাইল থেকে ডাটা রিস্টোর করুন</label>
+        <input type="file" id="importFile" accept=".json">
+      </div>
     </div>
   `;
-  document.getElementById('saveInfoBtn').addEventListener('click', ()=>{
-    db.meta.instituteName = document.getElementById('set_name').value.trim() || "Educare Coaching";
-    db.meta.institutePhone = document.getElementById('set_phone').value.trim();
-    db.meta.instituteAddress = document.getElementById('set_addr').value.trim();
-    save(); toast("সংরক্ষণ হয়েছে");
+
+  document.getElementById('instForm').addEventListener('submit', e=>{
+    e.preventDefault();
+    db.meta.instituteName = document.getElementById('st_name').value.trim();
+    db.meta.instituteAddress = document.getElementById('st_addr').value.trim();
+    db.meta.institutePhone = document.getElementById('st_phone').value.trim();
+    save();
+    toast("প্রতিষ্ঠানের তথ্য সংরক্ষিত হয়েছে");
   });
-  document.getElementById('set_logo').addEventListener('change', e=>{
-    const file = e.target.files[0]; if(!file) return;
-    const reader = new FileReader();
-    reader.onload = ev=>{ db.meta.logoDataUrl = ev.target.result; save(); toast("লোগো সংরক্ষণ হয়েছে"); renderSettings(); };
-    reader.readAsDataURL(file);
-  });
-  const rmBtn = document.getElementById('rmLogoBtn');
-  if(rmBtn) rmBtn.addEventListener('click', ()=>{ db.meta.logoDataUrl=null; save(); renderSettings(); });
-  document.getElementById('saveFeeBtn').addEventListener('click', ()=>{
-    document.querySelectorAll('.classFeeInput').forEach(inp=>{
-      db.classFees[inp.dataset.class] = Number(inp.value||0);
+
+  document.getElementById('feeForm').addEventListener('submit', e=>{
+    e.preventDefault();
+    CLASSES.forEach(c=>{
+      db.classFees[c] = Number(document.getElementById(`fee_${c}`).value||0);
     });
-    save(); toast("ফি হালনাগাদ হয়েছে");
+    save();
+    toast("শ্রেণীভিত্তিক ফি আপডেট হয়েছে");
   });
-  setupEditableList('listPayMethods','newPayMethod','addPayMethodBtn', db.settings.payMethods);
-  setupEditableList('listExpCats','newExpCat','addExpCatBtn', db.settings.expCats);
-  setupEditableList('listExamTypes','newExamType','addExamTypeBtn', db.settings.examTypes, (val)=>{
-    db.settings.subjectTemplates[val] = [{name:"",full:100},{name:"",full:100},{name:"",full:100}];
-  });
-  document.getElementById('saveFbBtn').addEventListener('click', async ()=>{
+
+  document.getElementById('fbForm').addEventListener('submit', e=>{
+    e.preventDefault();
     db.meta.firebaseUrl = document.getElementById('fb_url').value.trim();
     db.meta.firebasePath = document.getElementById('fb_path').value.trim() || "coaching_data";
-    localStorage.setItem(STORE_KEY, JSON.stringify(db));
-    toast("সংরক্ষণ হয়েছে, সিঙ্ক শুরু হচ্ছে...");
-    startCloudPollingIfNeeded();
-    await pushToCloud();
-    document.getElementById('fbStatus').textContent = syncLabel();
-  });
-  document.getElementById('forceSyncBtn').addEventListener('click', async ()=>{
-    const status = document.getElementById('fbStatus');
-    if(!db.meta.firebaseUrl){ toast("আগে Firebase URL সংরক্ষণ করুন"); return; }
-    status.textContent = "সিঙ্ক করা হচ্ছে...";
-    await checkCloudForUpdates();
-    await pushToCloud();
-    status.textContent = syncLabel() + " — সর্বশেষ: " + new Date().toLocaleTimeString('en-GB');
-  });
-  document.getElementById('exportBtn').addEventListener('click', ()=>{
-    const blob = new Blob([JSON.stringify(db,null,2)], {type:"application/json"});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = "coaching-backup-" + todayStr() + ".json";
-    a.click();
-    db.meta.lastBackupDate = todayStr();
     save();
-    toast("ব্যাকআপ ডাউনলোড হয়েছে");
+    toast("ফায়ারবেস তথ্য আপডেট হয়েছে");
+    pushToCloud();
   });
+
   document.getElementById('importFile').addEventListener('change', e=>{
     const file = e.target.files[0];
     if(!file) return;
     const reader = new FileReader();
     reader.onload = evt=>{
       try{
-        const data = JSON.parse(evt.target.result);
-        db = migrate(data); save(); toast("পুনরুদ্ধার সম্পন্ন হয়েছে"); showTab('dashboard');
-      }catch(err){ toast("ফাইলটি সঠিক নয়"); }
+        const imported = JSON.parse(evt.target.result);
+        db = migrate(imported);
+        save();
+        toast("ডাটা সফলভাবে রিস্টোর হয়েছে");
+        renderSettings();
+      }catch(err){ alert("ভুল ব্যাকআপ ফাইল!"); }
     };
     reader.readAsText(file);
   });
-  document.getElementById('resetBtn').addEventListener('click', ()=>{
-    if(confirm("আপনি কি নিশ্চিত? সব ডেটা স্থায়ীভাবে মুছে যাবে!")){
-      db = defaultDB(); save(); toast("সব ডেটা মুছে ফেলা হয়েছে"); showTab('dashboard');
-    }
-  });
 }
 
-/* ================== EDITABLE LISTS (self-customization) ================== */
-function setupEditableList(listId, inputId, btnId, arr, onAdd){
-  function renderChips(){
-    const wrap = document.getElementById(listId);
-    if(arr.length===0){ wrap.innerHTML = `<span style="font-size:12px;color:var(--muted)">কোনো আইটেম নেই</span>`; return; }
-    wrap.innerHTML = arr.map((item,i)=>`<button type="button" data-i="${i}">${item} ✕</button>`).join("");
-    wrap.querySelectorAll('button').forEach(b=>{
-      b.addEventListener('click', ()=>{
-        if(arr.length<=1){ toast("অন্তত একটি আইটেম থাকা আবশ্যক"); return; }
-        arr.splice(Number(b.dataset.i),1);
-        save(); renderChips();
-      });
-    });
-  }
-  renderChips();
-  document.getElementById(btnId).addEventListener('click', ()=>{
-    const inp = document.getElementById(inputId);
-    const val = inp.value.trim();
-    if(!val){ return; }
-    if(arr.includes(val)){ toast("এটি ইতিমধ্যে তালিকায় আছে"); return; }
-    arr.push(val);
-    if(onAdd) onAdd(val);
-    save(); inp.value=""; renderChips();
-  });
+function exportData(){
+  const blob = new Blob([JSON.stringify(db, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `coaching_backup_${todayStr()}.json`;
+  a.click();
 }
-
-/* ================== GLOBAL SAFETY NET ================== */
-window.addEventListener('error', function(e){
-  console.error('App error:', e.error||e.message);
-  try{ toast("সাময়িক একটি সমস্যা হয়েছে — ডেটা নিরাপদ আছে"); }catch(_){}
-  e.preventDefault();
-});
-window.addEventListener('unhandledrejection', function(e){
-  console.error('App promise error:', e.reason);
-  e.preventDefault();
-});
 
 /* ================== INIT ================== */
-showTab('dashboard');
-let cloudPollStarted = false;
-function startCloudPollingIfNeeded(){
-  if(cloudPollStarted || !db.meta.firebaseUrl) return;
-  cloudPollStarted = true;
-  checkCloudForUpdates();
-  setInterval(checkCloudForUpdates, 15000);
-}
-startCloudPollingIfNeeded();
+setInterval(checkCloudForUpdates, 5000);
+render();
 </script>
 </body>
 </html>
