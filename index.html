@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="bn">
 <head>
@@ -152,6 +153,7 @@
   <button data-tab="staff">স্টাফ ও বেতন</button>
   <button data-tab="expenses">অন্যান্য ব্যয়</button>
   <button data-tab="search">🔍 সার্চ</button>
+  <button data-tab="sms">📱 SMS</button>
   <button data-tab="summary">সারসংক্ষেপ</button>
 </nav>
 
@@ -187,7 +189,8 @@ function defaultDB(){
       classSeq:{}, receiptSeq:0, staffSeq:0, expenseSeq:0, examSeq:0,
       instituteName:"Educare Coaching", institutePhone:"01717046168",
       instituteAddress:"Gobindaganj, Gaibandha", logoDataUrl:null,
-      lastBackupDate:null, firebaseUrl:"", firebasePath:"coaching_data", updatedAt:0
+      lastBackupDate:null, firebaseUrl:"", firebasePath:"coaching_data", updatedAt:0,
+      smsProxyUrl:"", smsSecret:"", staffPaySeq:0
     },
     classFees,
     settings:{
@@ -197,7 +200,7 @@ function defaultDB(){
       subjectTemplates: JSON.parse(JSON.stringify(SUBJECT_TEMPLATES)),
       gradeScale:[{min:80,label:"A+"},{min:70,label:"A"},{min:60,label:"A-"},{min:50,label:"B"},{min:40,label:"C"},{min:0,label:"F"}]
     },
-    students:[], payments:[], attendance:[], exams:[], staff:[], staffPayments:[], expenses:[]
+    students:[], payments:[], attendance:[], exams:[], staff:[], staffPayments:[], expenses:[], smsLog:[]
   };
 }
 function migrate(data){
@@ -224,6 +227,7 @@ function migrate(data){
       }
     });
   });
+  (d.staffPayments||[]).forEach((p,i)=>{ if(!p.id) p.id = "SP-legacy-"+i; });
   return d;
 }
 let db = load();
@@ -241,16 +245,22 @@ function save(){
 }
 /* ================== FIREBASE LIVE SYNC ================== */
 let syncState = "off"; // off, synced, offline, syncing
+let syncErrorMsg = "";
 function setSyncState(s){
   syncState = s;
   const el = document.getElementById('syncIndicator');
   if(el) el.textContent = syncLabel();
 }
+function setSyncError(msg){
+  syncErrorMsg = msg;
+  const el = document.getElementById('fbStatus');
+  if(el) el.textContent = msg;
+}
 function syncLabel(){
   if(!db.meta.firebaseUrl) return "";
   if(syncState==="synced") return "🟢 লাইভ সিঙ্ক চালু";
   if(syncState==="syncing") return "🔄 সিঙ্ক হচ্ছে...";
-  if(syncState==="offline") return "⚪ অফলাইন (স্থানীয়ভাবে সংরক্ষিত)";
+  if(syncState==="offline") return "🔴 সিঙ্ক ব্যর্থ (নিচে কারণ দেখুন)";
   return "";
 }
 function cloudUrl(){
@@ -264,16 +274,28 @@ async function pushToCloud(){
   if(!url) return;
   setSyncState("syncing");
   try{
-    await fetch(url, { method:'PUT', body: JSON.stringify(db) });
+    const res = await fetch(url, { method:'PUT', body: JSON.stringify(db) });
+    const text = await res.text();
+    let parsed = null; try{ parsed = JSON.parse(text); }catch(_){}
+    if(!res.ok || (parsed && parsed.error)){
+      setSyncState("offline");
+      setSyncError(`❌ পাঠাতে ব্যর্থ (কোড ${res.status}): ${(parsed&&parsed.error)||text.slice(0,150)}`);
+      return;
+    }
     setSyncState("synced");
-  }catch(e){ setSyncState("offline"); }
+    setSyncError("");
+  }catch(e){ setSyncState("offline"); setSyncError("❌ নেটওয়ার্ক/CORS সমস্যা: "+e.message); }
 }
 async function pullFromCloud(){
   const url = cloudUrl();
   if(!url) return null;
   const res = await fetch(url);
-  if(!res.ok) throw new Error('fetch failed');
-  return await res.json();
+  const text = await res.text();
+  let parsed = null; try{ parsed = JSON.parse(text); }catch(_){}
+  if(!res.ok || (parsed && parsed.error)){
+    throw new Error(`কোড ${res.status}: ${(parsed&&parsed.error)||text.slice(0,150)}`);
+  }
+  return parsed;
 }
 async function checkCloudForUpdates(){
   if(!db.meta.firebaseUrl) return;
@@ -286,17 +308,63 @@ async function checkCloudForUpdates(){
       db = migrate(remote);
       localStorage.setItem(STORE_KEY, JSON.stringify(db));
       setSyncState("synced");
+      setSyncError("");
       render();
       toast("অন্য ডিভাইস থেকে নতুন তথ্য এসেছে");
     } else {
       setSyncState("synced");
+      setSyncError("");
     }
-  }catch(e){ setSyncState("offline"); }
+  }catch(e){ setSyncState("offline"); setSyncError("❌ আনতে ব্যর্থ: "+e.message); }
 }
 function toast(msg){
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+/* ================== SMS ================== */
+function smsConfigured(){ return !!db.meta.smsProxyUrl; }
+async function sendSms(to, message){
+  if(!smsConfigured()) return {ok:false, error:"SMS সেটিংস কনফিগার করা হয়নি — সেটিংসে গিয়ে সেট করুন"};
+  if(!to){ return {ok:false, error:"ফোন নম্বর নেই"}; }
+  try{
+    const res = await fetch(db.meta.smsProxyUrl, {
+      method:'POST',
+      body: JSON.stringify({secret: db.meta.smsSecret, to, message})
+    });
+    const text = await res.text();
+    let parsed = null; try{ parsed = JSON.parse(text); }catch(_){}
+    const failed = !res.ok || (parsed && parsed.error !== undefined && Number(parsed.error) !== 0);
+    logSms(to, message, failed ? "ব্যর্থ" : "পাঠানো হয়েছে");
+    if(failed){
+      return {ok:false, error: (parsed&&parsed.msg) || (parsed&&String(parsed.error)) || text.slice(0,150)};
+    }
+    return {ok:true};
+  }catch(e){
+    logSms(to, message, "ব্যর্থ");
+    return {ok:false, error:"নেটওয়ার্ক সমস্যা: "+e.message};
+  }
+}
+function logSms(to, message, status){
+  db.smsLog.unshift({to, message, status, date: new Date().toISOString()});
+  if(db.smsLog.length>200) db.smsLog.length = 200;
+  save();
+}
+async function bulkSendSms(targets, statusElId){
+  // targets: [{to, message, label}]
+  let sent=0, failed=0;
+  const failedLabels = [];
+  const statusEl = statusElId ? document.getElementById(statusElId) : null;
+  for(const t of targets){
+    if(statusEl) statusEl.textContent = `পাঠানো হচ্ছে... (${sent+failed+1}/${targets.length})`;
+    if(!t.to){ failed++; failedLabels.push(t.label+" (ফোন নম্বর নেই)"); continue; }
+    const r = await sendSms(t.to, t.message);
+    if(r.ok) sent++; else { failed++; failedLabels.push(t.label+" ("+r.error+")"); }
+  }
+  const summary = `✅ পাঠানো হয়েছে: ${sent} জন${failed?`, ❌ ব্যর্থ: ${failed} জন`:''}`;
+  if(statusEl) statusEl.innerHTML = summary + (failedLabels.length?`<br><span style="color:var(--danger)">${failedLabels.join(', ')}</span>`:'');
+  return {sent, failed};
 }
 function pad(n,len){ return String(n).padStart(len,"0"); }
 function nextStudentId(cls){
@@ -415,6 +483,7 @@ function render(){
     dashboard: renderDashboard, students: renderStudents, payments: renderPayments,
     attendance: renderAttendance, exams: renderExams, reports: renderReports, staff: renderStaff,
     expenses: renderExpenses, summary: renderSummary, settings: renderSettings, search: renderSearch,
+    sms: renderSmsTool,
     studentProfile: renderStudentProfile, receipt: renderReceipt, reportCard: renderReportCard,
     classResult: renderClassResult
   };
@@ -580,16 +649,53 @@ function renderStudentTable(){
   if(studentClassFilter!=="সব") list = list.filter(s=>s.class===studentClassFilter);
   if(q) list = list.filter(s=>s.id.toLowerCase().includes(q)||s.name.toLowerCase().includes(q));
   if(list.length===0){ wrap.innerHTML = `<div class="empty">কোনো স্টুডেন্ট পাওয়া যায়নি</div>`; return; }
-  wrap.innerHTML = `<table><tr><th>আইডি</th><th>নাম</th><th>শ্রেণী</th><th>বকেয়া</th><th></th></tr>
+  wrap.innerHTML = `<table><tr><th>আইডি</th><th>নাম</th><th>শ্রেণী</th><th>বকেয়া</th><th></th><th></th></tr>
     ${list.map(s=>{
       const due = studentDue(s);
       return `<tr>
         <td>${s.id}</td><td>${s.name}</td><td>${s.class}</td>
         <td>${due>0?`<span class="pill bad">${fmtMoney(due)}</span>`:`<span class="pill ok">নেই</span>`}</td>
         <td><button class="btn small secondary" onclick="openProfile('${s.id}')">দেখুন</button></td>
+        <td><button class="btn small danger" onclick="deleteStudent('${s.id}')">🗑</button></td>
       </tr>`;
     }).join("")}
   </table>`;
+}
+function deleteStudent(id){
+  const s = getStudent(id); if(!s) return;
+  const payCount = db.payments.filter(p=>p.studentId===id).length;
+  const attCount = db.attendance.filter(a=>a.studentId===id).length;
+  const examCount = db.exams.filter(e=>e.studentId===id).length;
+  const warn = `"${s.name}" (${s.id}) মুছে ফেলা হবে — সাথে তার ${payCount} টি পেমেন্ট, ${attCount} টি উপস্থিতি রেকর্ড ও ${examCount} টি পরীক্ষার ফলাফলও মুছে যাবে। এই কাজ ফেরত নেওয়া যাবে না। এগোবেন?`;
+  if(!confirm(warn)) return;
+  db.students = db.students.filter(x=>x.id!==id);
+  db.payments = db.payments.filter(p=>p.studentId!==id);
+  db.attendance = db.attendance.filter(a=>a.studentId!==id);
+  db.exams = db.exams.filter(e=>e.studentId!==id);
+  save();
+  toast("স্টুডেন্ট ও সম্পর্কিত সব তথ্য মুছে ফেলা হয়েছে");
+  renderStudents();
+}
+function deletePayment(id){
+  if(!confirm("এই পেমেন্ট রেকর্ডটি মুছে ফেলা হবে। এগোবেন?")) return;
+  db.payments = db.payments.filter(p=>p.id!==id);
+  save();
+  toast("পেমেন্ট মুছে ফেলা হয়েছে");
+  render();
+}
+function deleteAttendance(studentId, date){
+  if(!confirm("এই উপস্থিতি রেকর্ডটি মুছে ফেলা হবে। এগোবেন?")) return;
+  db.attendance = db.attendance.filter(a=>!(a.studentId===studentId && a.date===date));
+  save();
+  toast("উপস্থিতি রেকর্ড মুছে ফেলা হয়েছে");
+  render();
+}
+function deleteExam(id){
+  if(!confirm("এই পরীক্ষার ফলাফলটি মুছে ফেলা হবে। এগোবেন?")) return;
+  db.exams = db.exams.filter(e=>e.id!==id);
+  save();
+  toast("ফলাফল মুছে ফেলা হয়েছে");
+  render();
 }
 let profileStudentId = null;
 let profileBackTab = 'students';
@@ -628,16 +734,18 @@ function renderStudentProfile(){
     <div class="card">
       <h2>পেমেন্ট হিস্ট্রি (${pays.length})</h2>
       ${pays.length===0?'<div class="empty">কোনো পেমেন্ট নেই</div>':`
-      <div class="table-wrap"><table><tr><th>তারিখ</th><th>কোন মাসের ফি</th><th>পরিমাণ</th><th></th></tr>
+      <div class="table-wrap"><table><tr><th>তারিখ</th><th>কোন মাসের ফি</th><th>পরিমাণ</th><th></th><th></th></tr>
       ${pays.map(p=>`<tr><td>${fmtDate(p.date)}</td><td>${p.forMonth}</td><td>${fmtMoney(p.amount)}</td>
-        <td><button class="btn small secondary" onclick="openReceipt('${p.id}')">রিসিট</button></td></tr>`).join("")}
+        <td><button class="btn small secondary" onclick="openReceipt('${p.id}')">রিসিট</button></td>
+        <td><button class="btn small danger" onclick="deletePayment('${p.id}')">🗑</button></td></tr>`).join("")}
       </table></div>`}
     </div>
     <div class="card">
       <h2>উপস্থিতি হিস্ট্রি (${attRecs.length})</h2>
       ${attRecs.length===0?'<div class="empty">কোনো তথ্য নেই</div>':`
-      <div class="table-wrap"><table><tr><th>তারিখ</th><th>অবস্থা</th></tr>
-      ${attRecs.slice(0,25).map(a=>`<tr><td>${fmtDate(a.date)}</td><td><span class="pill ${a.status==='উপস্থিত'?'ok':(a.status==='অনুপস্থিত'?'bad':'warn')}">${a.status}</span></td></tr>`).join("")}
+      <div class="table-wrap"><table><tr><th>তারিখ</th><th>অবস্থা</th><th></th></tr>
+      ${attRecs.slice(0,25).map(a=>`<tr><td>${fmtDate(a.date)}</td><td><span class="pill ${a.status==='উপস্থিত'?'ok':(a.status==='অনুপস্থিত'?'bad':'warn')}">${a.status}</span></td>
+        <td><button class="btn small danger" onclick="deleteAttendance('${s.id}','${a.date}')">🗑</button></td></tr>`).join("")}
       </table></div>
       ${attRecs.length>25?`<p style="font-size:12px;color:var(--muted);text-align:center">সর্বশেষ ২৫টি দেখানো হয়েছে, মোট ${attRecs.length}টি রেকর্ড আছে</p>`:''}`}
     </div>
@@ -652,9 +760,10 @@ function renderStudentProfile(){
     <div class="card">
       <h2>পরীক্ষার ফলাফল (${exs.length})</h2>
       ${exs.length===0?'<div class="empty">কোনো ফলাফল নেই</div>':`
-      <div class="table-wrap"><table><tr><th>ধরন</th><th>তারিখ</th><th>প্রাপ্ত</th><th>গ্রেড</th><th></th></tr>
+      <div class="table-wrap"><table><tr><th>ধরন</th><th>তারিখ</th><th>প্রাপ্ত</th><th>গ্রেড</th><th></th><th></th></tr>
       ${exs.map(e=>`<tr><td>${e.type||'-'}</td><td>${fmtDate(e.date)}</td><td>${examTotal(e)}/${examFull(e)}</td><td>${gradeFromPct(examPct(e))}</td>
-        <td><button class="btn small secondary" onclick="openReportCard('${e.id}')">দেখুন</button></td></tr>`).join("")}
+        <td><button class="btn small secondary" onclick="openReportCard('${e.id}')">দেখুন</button></td>
+        <td><button class="btn small danger" onclick="deleteExam('${e.id}')">🗑</button></td></tr>`).join("")}
       </table></div>`}
     </div>
   `;
@@ -687,6 +796,92 @@ function renderGlobalSearchResults(){
     ${list.map(s=>`<tr><td>${s.id}</td><td>${s.name}</td><td>${s.class}</td>
       <td><button class="btn small secondary" onclick="openProfile('${s.id}','search')">দেখুন</button></td></tr>`).join("")}
   </table></div>`;
+}
+
+/* ================== SMS TOOL ================== */
+let smsQuickTo = "";
+let smsQuickMsg = "";
+let smsBroadcastScope = "সব";
+let smsBroadcastMsg = "";
+let smsBroadcastTarget = "guardian"; // guardian or student
+function renderSmsTool(){
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="card">
+      <h2>দ্রুত SMS (একটা নম্বরে)</h2>
+      ${!smsConfigured()?`<p style="font-size:12px;color:var(--danger)">SMS পাঠাতে আগে সেটিংসে গিয়ে SMS প্রক্সি সেট করুন।</p>`:''}
+      <label>ফোন নম্বর</label>
+      <input id="sms_to" value="${smsQuickTo}" placeholder="8801XXXXXXXXX">
+      <label>মেসেজ</label>
+      <textarea id="sms_msg" rows="3" placeholder="জরুরি ঘোষণা লিখুন...">${smsQuickMsg}</textarea>
+      <button class="btn" id="sendQuickSmsBtn">📤 পাঠান</button>
+      <p id="quickSmsStatus" style="font-size:12px;color:var(--muted);margin-top:8px"></p>
+    </div>
+    <div class="card">
+      <h2>সবাইকে ব্রডকাস্ট SMS</h2>
+      <label>কাকে পাঠাবেন</label>
+      <div class="tag-row" id="smsScopeTags">
+        ${["সব",...CLASSES].map(c=>`<button data-c="${c}" class="${smsBroadcastScope===c?'active':''}">${c}</button>`).join("")}
+      </div>
+      <label>নম্বর</label>
+      <select id="sms_target">
+        <option value="guardian" ${smsBroadcastTarget==='guardian'?'selected':''}>অভিভাবকের হোয়াটসঅ্যাপ/মোবাইল</option>
+        <option value="student" ${smsBroadcastTarget==='student'?'selected':''}>শিক্ষার্থীর মোবাইল</option>
+      </select>
+      <label>মেসেজ</label>
+      <textarea id="sms_broadcast_msg" rows="3" placeholder="যেমন: আগামীকাল ক্লাস বন্ধ থাকবে।">${smsBroadcastMsg}</textarea>
+      <p style="font-size:12px;color:var(--muted)" id="smsScopeCount"></p>
+      <button class="btn" id="sendBroadcastSmsBtn">📤 সবাইকে পাঠান</button>
+      <p id="broadcastSmsStatus" style="font-size:12px;color:var(--muted);margin-top:8px"></p>
+    </div>
+    <div class="card">
+      <h2>সাম্প্রতিক SMS হিস্ট্রি (${db.smsLog.length})</h2>
+      ${db.smsLog.length===0?'<div class="empty">কোনো SMS পাঠানো হয়নি</div>':`
+      <div class="table-wrap"><table><tr><th>নম্বর</th><th>মেসেজ</th><th>সময়</th><th>অবস্থা</th></tr>
+      ${db.smsLog.slice(0,30).map(l=>`<tr><td>${l.to}</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.message}</td><td>${new Date(l.date).toLocaleString('en-GB')}</td><td><span class="pill ${l.status==='পাঠানো হয়েছে'?'ok':'bad'}">${l.status}</span></td></tr>`).join("")}
+      </table></div>`}
+    </div>
+  `;
+  document.getElementById('sms_to').addEventListener('input', e=>{ smsQuickTo=e.target.value; });
+  document.getElementById('sms_msg').addEventListener('input', e=>{ smsQuickMsg=e.target.value; });
+  document.getElementById('sendQuickSmsBtn').addEventListener('click', async ()=>{
+    const status = document.getElementById('quickSmsStatus');
+    if(!smsQuickTo.trim()||!smsQuickMsg.trim()){ toast("নম্বর ও মেসেজ দিন"); return; }
+    status.textContent = "পাঠানো হচ্ছে...";
+    const r = await sendSms(smsQuickTo.trim(), smsQuickMsg.trim());
+    status.textContent = r.ok ? "✅ পাঠানো হয়েছে" : ("❌ ব্যর্থ: "+r.error);
+  });
+  document.getElementById('smsScopeTags').addEventListener('click', e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    smsBroadcastScope=b.dataset.c; renderSmsTool();
+  });
+  document.getElementById('sms_target').addEventListener('change', e=>{ smsBroadcastTarget=e.target.value; updateSmsScopeCount(); });
+  document.getElementById('sms_broadcast_msg').addEventListener('input', e=>{ smsBroadcastMsg=e.target.value; });
+  updateSmsScopeCount();
+  document.getElementById('sendBroadcastSmsBtn').addEventListener('click', async ()=>{
+    if(!smsBroadcastMsg.trim()){ toast("মেসেজ লিখুন"); return; }
+    const list = smsBroadcastList();
+    if(list.length===0){ toast("এই স্কোপে কোনো নম্বর পাওয়া যায়নি"); return; }
+    if(!confirm(`${list.length} জনকে SMS পাঠানো হবে। এগোবেন?`)) return;
+    const targets = list.map(s=>({
+      to: smsBroadcastTarget==='guardian' ? (s.whatsapp||s.phone) : s.phone,
+      message: smsBroadcastMsg.trim(),
+      label: s.name
+    }));
+    await bulkSendSms(targets, 'broadcastSmsStatus');
+  });
+}
+function smsBroadcastList(){
+  let list = db.students.filter(s=>s.status!=="নিষ্ক্রিয়");
+  if(smsBroadcastScope!=="সব") list = list.filter(s=>s.class===smsBroadcastScope);
+  return list;
+}
+function updateSmsScopeCount(){
+  const el = document.getElementById('smsScopeCount');
+  if(!el) return;
+  const list = smsBroadcastList();
+  const withPhone = list.filter(s=>smsBroadcastTarget==='guardian'?(s.whatsapp||s.phone):s.phone).length;
+  el.textContent = `মোট ${list.length} জন, নম্বর আছে ${withPhone} জনের`;
 }
 
 /* ================== PAYMENTS ================== */
@@ -844,7 +1039,21 @@ function renderReceipt(){
     </div>
     <button class="btn no-print" onclick="window.print()">🖨️ প্রিন্ট / PDF সেভ করুন</button>
     <p class="no-print" style="font-size:12px;color:var(--muted);text-align:center">প্রিন্ট করার পর ছবি তুলে বা PDF সেভ করে WhatsApp/ইমেইলে ম্যানুয়ালি পাঠাতে পারবেন।</p>
+    <button class="btn secondary no-print" id="smsReceiptBtn">📱 অভিভাবককে SMS পাঠান</button>
+    <p id="receiptSmsStatus" class="no-print" style="font-size:12px;color:var(--muted);text-align:center"></p>
   `;
+  const smsBtn = document.getElementById('smsReceiptBtn');
+  if(smsBtn){
+    smsBtn.addEventListener('click', async ()=>{
+      const status = document.getElementById('receiptSmsStatus');
+      const to = s.whatsapp || s.phone;
+      if(!to){ status.textContent = "❌ এই স্টুডেন্টের কোনো ফোন নম্বর নেই"; return; }
+      const msg = `প্রিয় অভিভাবক, ${s.name}-এর পক্ষে ${fmtMoney(p.amount)} (${p.forMonth} মাসের ফি) পরিশোধ গ্রহণ করা হয়েছে। রিসিট নং: ${p.receiptNo}। ধন্যবাদ - ${db.meta.instituteName}`;
+      status.textContent = "পাঠানো হচ্ছে...";
+      const r = await sendSms(to, msg);
+      status.textContent = r.ok ? "✅ SMS পাঠানো হয়েছে ("+to+")" : ("❌ ব্যর্থ: "+r.error);
+    });
+  }
 }
 
 /* ================== ATTENDANCE ================== */
@@ -935,7 +1144,24 @@ function renderAbsentList(){
   wrap.innerHTML = Object.keys(byClass).map(c=>`
     <div class="day-head">${c}</div>
     <table>${byClass[c].map(x=>`<tr><td>${x.name}</td><td><span class="pill ${x.status==='অনুপস্থিত'?'bad':'warn'}">${x.status}</span></td></tr>`).join("")}</table>
-  `).join("");
+  `).join("") + `
+    <button class="btn secondary no-print" id="absentSmsBtn" style="margin-top:10px">📱 সবাইকে SMS পাঠান (অনুপস্থিতির খবর)</button>
+    <p id="absentSmsStatus" style="font-size:12px;color:var(--muted);margin-top:6px"></p>
+  `;
+  document.getElementById('absentSmsBtn').addEventListener('click', async ()=>{
+    const targets = recs.map(r=>{
+      const s = getStudent(r.studentId);
+      if(!s) return null;
+      return {
+        to: s.whatsapp || s.phone,
+        message: `প্রিয় অভিভাবক, আপনার সন্তান ${s.name} আজ (${fmtDate(attDate)}) কোচিং-এ ${r.status} ছিল। - ${db.meta.instituteName}`,
+        label: s.name
+      };
+    }).filter(Boolean);
+    if(targets.length===0){ toast("কেউ নেই"); return; }
+    if(!confirm(`${targets.length} জন অভিভাবককে SMS পাঠানো হবে। এগোবেন?`)) return;
+    await bulkSendSms(targets, 'absentSmsStatus');
+  });
 }
 
 /* ================== EXAMS ================== */
@@ -1195,9 +1421,22 @@ function renderReportCard(){
       </div>
     </div>
     <button class="btn no-print" onclick="window.print()">🖨️ প্রিন্ট / PDF সেভ করুন</button>
+    <button class="btn secondary no-print" id="smsReportBtn">📱 অভিভাবককে রেজাল্ট SMS পাঠান</button>
+    <p id="reportSmsStatus" class="no-print" style="font-size:12px;color:var(--muted);text-align:center"></p>
   `;
+  const smsBtn = document.getElementById('smsReportBtn');
+  if(smsBtn){
+    smsBtn.addEventListener('click', async ()=>{
+      const status = document.getElementById('reportSmsStatus');
+      const to = s.whatsapp || s.phone;
+      if(!to){ status.textContent = "❌ এই স্টুডেন্টের কোনো ফোন নম্বর নেই"; return; }
+      const msg = `প্রিয় অভিভাবক, ${s.name} (${e.type}) পরীক্ষায় ${examTotal(e)}/${examFull(e)} (${examPct(e)}%) পেয়েছে। গ্রেড: ${gradeFromPct(examPct(e))} - ${db.meta.instituteName}`;
+      status.textContent = "পাঠানো হচ্ছে...";
+      const r = await sendSms(to, msg);
+      status.textContent = r.ok ? "✅ SMS পাঠানো হয়েছে ("+to+")" : ("❌ ব্যর্থ: "+r.error);
+    });
+  }
 }
-let classResultCtx = null;
 function openClassResult(type, date, cls){ classResultCtx = {type,date,cls}; currentTab='classResult'; render(); window.scrollTo(0,0); }
 function renderClassResult(){
   const app = document.getElementById('app');
@@ -1358,6 +1597,15 @@ function renderReportBody(){
   else if(reportType==="পেমেন্ট") body = paymentReportHtml(dates, periodLabel, clsLabel);
   else if(reportType==="ভর্তি/অব্যাহতি") body = enrollmentReportHtml(dates, periodLabel, clsLabel);
   wrap.innerHTML = `<div class="receipt" style="margin-top:12px">${body}</div>`;
+  const absentSmsBtn = document.getElementById('reportAbsentSmsBtn');
+  if(absentSmsBtn){
+    absentSmsBtn.addEventListener('click', async ()=>{
+      const targets = reportAbsenteesForSms.filter(t=>t.to);
+      if(targets.length===0){ toast("কোনো ফোন নম্বর পাওয়া যায়নি"); return; }
+      if(!confirm(`${targets.length} জন অভিভাবককে SMS পাঠানো হবে। এগোবেন?`)) return;
+      await bulkSendSms(targets, 'reportAbsentSmsStatus');
+    });
+  }
 }
 
 function fullSummaryReportHtml(dates, periodLabel){
@@ -1431,10 +1679,12 @@ function resultReportHtml(dates, periodLabel, clsLabel){
   return html;
 }
 
+let reportAbsenteesForSms = [];
 function attendanceReportHtml(dates, periodLabel, clsLabel){
   const classes = reportClassScope();
   let html = printHeaderHtml("Attendance Report — " + clsLabel + " — " + periodLabel);
   const attRows = db.attendance.filter(a=>dates.includes(a.date));
+  reportAbsenteesForSms = [];
   classes.forEach(cls=>{
     const studIds = new Set(db.students.filter(s=>s.class===cls).map(s=>s.id));
     const rows = attRows.filter(a=>studIds.has(a.studentId));
@@ -1458,12 +1708,21 @@ function attendanceReportHtml(dates, periodLabel, clsLabel){
           <tr><th>Name</th><th>Date</th><th>Status</th><th>Student Phone</th><th>Guardian</th><th>Guardian Phone</th></tr>
           ${absentRows.map(a=>{
             const s = getStudent(a.studentId)||{};
+            reportAbsenteesForSms.push({
+              to: s.whatsapp||s.phone,
+              message: `প্রিয় অভিভাবক, আপনার সন্তান ${s.name||''} (${fmtDate(a.date)}) কোচিং-এ ${a.status} ছিল। - ${db.meta.instituteName}`,
+              label: s.name||a.studentId
+            });
             return `<tr><td>${s.name||'-'}</td><td>${fmtDate(a.date)}</td><td>${a.status}</td><td>${s.phone||'-'}</td><td>${s.guardian||'-'}</td><td>${s.whatsapp||s.phone||'-'}</td></tr>`;
           }).join("")}
         </table></div>`;
       }
     }
   });
+  if(reportDetail==="বিস্তারিত" && reportAbsenteesForSms.length>0){
+    html += `<button class="btn secondary no-print" id="reportAbsentSmsBtn" style="margin-top:10px">📱 এই তালিকার সবাইকে SMS পাঠান (${reportAbsenteesForSms.length} জন)</button>
+    <p id="reportAbsentSmsStatus" class="no-print" style="font-size:12px;color:var(--muted);margin-top:6px"></p>`;
+  }
   return html;
 }
 
@@ -1567,8 +1826,8 @@ function renderStaff(){
     <div class="card">
       <h2>স্টাফ তালিকা</h2>
       <div class="table-wrap">
-        ${db.staff.length===0?'<div class="empty">কোনো স্টাফ নেই</div>':`<table><tr><th>নাম</th><th>পদবি</th><th>বেতন</th></tr>
-        ${db.staff.map(st=>`<tr><td>${st.name}</td><td>${st.position}</td><td>${fmtMoney(st.salary)}</td></tr>`).join("")}
+        ${db.staff.length===0?'<div class="empty">কোনো স্টাফ নেই</div>':`<table><tr><th>নাম</th><th>পদবি</th><th>বেতন</th><th></th></tr>
+        ${db.staff.map(st=>`<tr><td>${st.name}</td><td>${st.position}</td><td>${fmtMoney(st.salary)}</td><td><button class="btn small danger" onclick="deleteStaff('${st.id}')">🗑</button></td></tr>`).join("")}
         </table>`}
       </div>
     </div>
@@ -1612,7 +1871,9 @@ function renderStaff(){
     if(!stid){ toast("স্টাফ নির্বাচন করুন"); return; }
     const dateVal = document.getElementById('sp_date').value || todayStr();
     const day = new Date(dateVal).getDate();
+    db.meta.staffPaySeq++;
     db.staffPayments.push({
+      id: "SP-"+pad(db.meta.staffPaySeq,5),
       staffId: stid,
       month: document.getElementById('sp_month').value,
       date: dateVal,
@@ -1622,14 +1883,28 @@ function renderStaff(){
     save(); toast("বেতন প্রদান রেকর্ড হয়েছে"); renderStaff();
   });
 }
+function deleteStaff(id){
+  const st = db.staff.find(x=>x.id===id); if(!st) return;
+  const payCount = db.staffPayments.filter(p=>p.staffId===id).length;
+  if(!confirm(`"${st.name}" মুছে ফেলা হবে — সাথে তার ${payCount} টি বেতন প্রদানের রেকর্ডও মুছে যাবে। এগোবেন?`)) return;
+  db.staff = db.staff.filter(x=>x.id!==id);
+  db.staffPayments = db.staffPayments.filter(p=>p.staffId!==id);
+  save(); toast("স্টাফ মুছে ফেলা হয়েছে"); renderStaff();
+}
+function deleteStaffPayment(id){
+  if(!confirm("এই বেতন প্রদানের রেকর্ডটি মুছে ফেলা হবে। এগোবেন?")) return;
+  db.staffPayments = db.staffPayments.filter(p=>p.id!==id);
+  save(); toast("রেকর্ড মুছে ফেলা হয়েছে"); renderStaff();
+}
 function staffPaymentsTableHtml(){
   const list = [...db.staffPayments].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,30);
   if(list.length===0) return `<div class="empty">কোনো বেতন প্রদান রেকর্ড নেই</div>`;
-  return `<table><tr><th>নাম</th><th>মাস</th><th>পরিমাণ</th><th>অবস্থা</th></tr>
+  return `<table><tr><th>নাম</th><th>মাস</th><th>পরিমাণ</th><th>অবস্থা</th><th></th></tr>
     ${list.map(p=>{
       const st = db.staff.find(x=>x.id===p.staffId);
       const cls = p.status==="সময়মত পরিশোধিত"?"ok":"warn";
-      return `<tr><td>${st?st.name:'-'}</td><td>${p.month}</td><td>${fmtMoney(p.amount)}</td><td><span class="pill ${cls}">${p.status}</span></td></tr>`;
+      return `<tr><td>${st?st.name:'-'}</td><td>${p.month}</td><td>${fmtMoney(p.amount)}</td><td><span class="pill ${cls}">${p.status}</span></td>
+        <td><button class="btn small danger" onclick="deleteStaffPayment('${p.id}')">🗑</button></td></tr>`;
     }).join("")}
   </table>`;
 }
@@ -1670,11 +1945,17 @@ function renderExpenses(){
     save(); toast("ব্যয় সংরক্ষণ হয়েছে"); renderExpenses();
   });
 }
+function deleteExpense(id){
+  if(!confirm("এই ব্যয়ের রেকর্ডটি মুছে ফেলা হবে। এগোবেন?")) return;
+  db.expenses = db.expenses.filter(x=>x.id!==id);
+  save(); toast("মুছে ফেলা হয়েছে"); renderExpenses();
+}
 function expensesTableHtml(){
   const list = [...db.expenses].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,30);
   if(list.length===0) return `<div class="empty">কোনো ব্যয় নেই</div>`;
-  return `<table><tr><th>মাস</th><th>খাত</th><th>বিবরণ</th><th>পরিমাণ</th></tr>
-    ${list.map(x=>`<tr><td>${x.month}</td><td>${x.category}</td><td>${x.description||'-'}</td><td>${fmtMoney(x.amount)}</td></tr>`).join("")}
+  return `<table><tr><th>মাস</th><th>খাত</th><th>বিবরণ</th><th>পরিমাণ</th><th></th></tr>
+    ${list.map(x=>`<tr><td>${x.month}</td><td>${x.category}</td><td>${x.description||'-'}</td><td>${fmtMoney(x.amount)}</td>
+      <td><button class="btn small danger" onclick="deleteExpense('${x.id}')">🗑</button></td></tr>`).join("")}
   </table>`;
 }
 
@@ -1765,7 +2046,16 @@ function renderSettings(){
       <input id="fb_path" value="${m.firebasePath||'coaching_data'}">
       <button class="btn" id="saveFbBtn">সংরক্ষণ করুন ও সিঙ্ক চালু করুন</button>
       <button class="btn secondary" id="forceSyncBtn" style="margin-top:8px">🔄 এখনই সিঙ্ক করুন</button>
-      <p id="fbStatus" style="font-size:12px;color:var(--muted);margin-top:8px"></p>
+      <p id="fbStatus" style="font-size:12px;color:var(--muted);margin-top:8px">${syncErrorMsg||''}</p>
+    </div>
+    <div class="card">
+      <h2>SMS সেটআপ</h2>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 6px">গুগল অ্যাপস স্ক্রিপ্ট প্রক্সির URL ও গোপন কোড বসান (SMS গেটওয়ের API Key প্রক্সির ভেতরে লুকানো থাকে, অ্যাপে না)।</p>
+      <label>SMS Proxy Web App URL</label>
+      <input id="sms_url" value="${m.smsProxyUrl||''}" placeholder="https://script.google.com/macros/s/xxxx/exec">
+      <label>গোপন কোড</label>
+      <input id="sms_secret" value="${m.smsSecret||''}" placeholder="নিজের গোপন কোড">
+      <button class="btn" id="saveSmsBtn">সংরক্ষণ করুন</button>
     </div>
     <div class="card">
       <h2>ডেটা ব্যাকআপ</h2>
@@ -1802,24 +2092,30 @@ function renderSettings(){
   setupEditableList('listPayMethods','newPayMethod','addPayMethodBtn', db.settings.payMethods);
   setupEditableList('listExpCats','newExpCat','addExpCatBtn', db.settings.expCats);
   setupEditableList('listExamTypes','newExamType','addExamTypeBtn', db.settings.examTypes, (val)=>{
-    db.settings.subjectTemplates[val] = [{name:"",full:100},{name:"",full:100},{name:"",full:100}];
+    db.settings.subjectTemplates[val] = [{name:"",cqFull:100,mcqFull:0},{name:"",cqFull:100,mcqFull:0},{name:"",cqFull:100,mcqFull:0}];
   });
   document.getElementById('saveFbBtn').addEventListener('click', async ()=>{
     db.meta.firebaseUrl = document.getElementById('fb_url').value.trim();
     db.meta.firebasePath = document.getElementById('fb_path').value.trim() || "coaching_data";
     localStorage.setItem(STORE_KEY, JSON.stringify(db));
     toast("সংরক্ষণ হয়েছে, সিঙ্ক শুরু হচ্ছে...");
+    document.getElementById('fbStatus').textContent = "সিঙ্ক করা হচ্ছে...";
     startCloudPollingIfNeeded();
     await pushToCloud();
-    document.getElementById('fbStatus').textContent = syncLabel();
   });
   document.getElementById('forceSyncBtn').addEventListener('click', async ()=>{
     const status = document.getElementById('fbStatus');
     if(!db.meta.firebaseUrl){ toast("আগে Firebase URL সংরক্ষণ করুন"); return; }
     status.textContent = "সিঙ্ক করা হচ্ছে...";
     await checkCloudForUpdates();
-    await pushToCloud();
-    status.textContent = syncLabel() + " — সর্বশেষ: " + new Date().toLocaleTimeString('en-GB');
+    if(syncState==="synced") await pushToCloud();
+    if(syncState==="synced") status.textContent = syncLabel() + " — সর্বশেষ: " + new Date().toLocaleTimeString('en-GB');
+  });
+  document.getElementById('saveSmsBtn').addEventListener('click', ()=>{
+    db.meta.smsProxyUrl = document.getElementById('sms_url').value.trim();
+    db.meta.smsSecret = document.getElementById('sms_secret').value.trim();
+    save();
+    toast("SMS সেটিংস সংরক্ষণ হয়েছে");
   });
   document.getElementById('exportBtn').addEventListener('click', ()=>{
     const blob = new Blob([JSON.stringify(db,null,2)], {type:"application/json"});
